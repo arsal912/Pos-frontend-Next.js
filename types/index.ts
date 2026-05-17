@@ -12,6 +12,7 @@ export interface User {
   permissions: string[];
   store: Store | null;
   branch: Branch | null;
+  email_verified_at: string | null;
 }
 
 export interface Store {

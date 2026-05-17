@@ -17,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/auth';
+import VerificationBanner from '@/components/shared/VerificationBanner';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -124,7 +125,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       <main className="flex-1 overflow-x-hidden">
-        <div className="p-6 md:p-10 max-w-7xl mx-auto">{children}</div>
+        <div className="p-6 md:p-10 max-w-7xl mx-auto">
+          <VerificationBanner />
+          {children}
+        </div>
       </main>
     </div>
   );
