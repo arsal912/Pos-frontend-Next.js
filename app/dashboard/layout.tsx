@@ -13,6 +13,8 @@ import {
   LogOut,
   Sparkles,
   Loader2,
+  CreditCard,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +28,7 @@ const NAV_ITEMS = [
   { href: '/dashboard/products', label: 'Products', icon: Package },
   { href: '/dashboard/customers', label: 'Customers', icon: Users },
   { href: '/dashboard/reports', label: 'Reports', icon: BarChart3 },
+  { href: '/dashboard/billing', label: 'Billing', icon: CreditCard },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -102,12 +105,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           })}
         </nav>
 
-        {user.store?.trial_ends_at && (
+        {/* Subscription status banners */}
+        {user.store?.status === 'expired' && (
+          <div className="m-3 p-3 rounded-lg border bg-destructive/10 border-destructive/30 text-xs">
+            <p className="font-semibold text-destructive flex items-center gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5" /> Subscription expired
+            </p>
+            <Link href="/dashboard/billing" className="text-primary underline mt-1 block">
+              Reactivate now →
+            </Link>
+          </div>
+        )}
+        {user.store?.status !== 'expired' && user.store?.trial_ends_at && (
           <div className="m-3 p-3 rounded-lg border bg-warning/10 border-warning/30 text-xs">
             <p className="font-semibold flex items-center gap-1.5"><Badge variant="warning">TRIAL</Badge></p>
             <p className="text-muted-foreground mt-1">
               Ends {new Date(user.store.trial_ends_at).toLocaleDateString()}
             </p>
+            <Link href="/dashboard/billing" className="text-primary underline mt-1 block">
+              Upgrade now →
+            </Link>
           </div>
         )}
 

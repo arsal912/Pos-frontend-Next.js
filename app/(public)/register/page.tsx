@@ -100,6 +100,27 @@ export default function RegisterPage() {
     try {
       const res = await apiClient.post<{ token: string; user: User }>('/auth/register', form);
       setAuth(res.data.user, res.data.token);
+
+      const selectedPlan = plans.find((p) => p.id === form.plan_id);
+      const isPaid = selectedPlan && selectedPlan.price > 0 && selectedPlan.trial_days === 0;
+
+      if (isPaid) {
+        toast.success('Account created! Redirecting to checkout…');
+        try {
+          const checkoutRes = await apiClient.post('/store/billing/checkout', {
+            gateway: 'stripe',
+            plan_id: form.plan_id,
+          });
+          const url = (checkoutRes.data as any)?.checkout?.checkout_url;
+          if (url) {
+            window.location.href = url;
+            return;
+          }
+        } catch {
+          // Checkout failed — fall through to dashboard
+        }
+      }
+
       toast.success('Welcome aboard! Your store is ready.');
       router.push('/dashboard');
     } catch (err) {

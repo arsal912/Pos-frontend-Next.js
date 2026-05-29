@@ -14,6 +14,7 @@ import {
   Sparkles,
   Loader2,
   ChevronRight,
+  CreditCard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/auth';
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/stores', label: 'Stores', icon: Store },
   { href: '/admin/modules', label: 'Modules', icon: Puzzle },
+  { href: '/admin/payment-gateways', label: 'Payment Gateways', icon: CreditCard },
   { href: '/admin/landing-page', label: 'Landing Page', icon: Globe },
   { href: '/admin/api-logs', label: 'API Logs', icon: ScrollText },
 ];
