@@ -14,6 +14,7 @@ import {
   X,
   ArrowUpRight,
   Clock,
+  ExternalLink,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,13 @@ interface Subscription {
   auto_renew: boolean;
 }
 
+interface Gateway {
+  slug: string;
+  name: string;
+  supported_currencies: string[];
+  is_test_mode: boolean;
+}
+
 interface Payment {
   id: number;
   amount: number;
@@ -83,6 +91,7 @@ export default function BillingPage() {
   const searchParams = useSearchParams();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [gateways, setGateways] = useState<Gateway[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
@@ -90,24 +99,44 @@ export default function BillingPage() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [changingPlan, setChangingPlan] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
+  const [selectedGateway, setSelectedGateway] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
+  const [openingPortal, setOpeningPortal] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('payment') === 'success') {
       toast.success('Payment successful! Your subscription is now active.');
     }
+    if (searchParams.get('reactivate') === 'true') {
+      // Auto-open plan picker when arriving from a 402 redirect
+      setSelectedGateway(null);
+      setShowUpgradeModal(true);
+    }
   }, [searchParams]);
+
+  // Pick the right gateway for a plan. For PKR plans, use the user's selection
+  // (or auto-pick if only one PKR gateway is active). Non-PKR → Stripe.
+  const resolveGateway = (plan: Plan | undefined, preferred: string | null): string => {
+    if (!plan || plan.currency !== 'PKR') return 'stripe';
+    const pkrGateways = gateways.filter(g =>
+      g.supported_currencies?.includes('PKR') && g.slug !== 'stripe' && g.slug !== 'paypal' && g.slug !== 'manual'
+    );
+    if (preferred && pkrGateways.some(g => g.slug === preferred)) return preferred;
+    return pkrGateways[0]?.slug ?? 'jazzcash';
+  };
 
   const load = async () => {
     setLoading(true);
     try {
-      const [subRes, plansRes, paymentsRes] = await Promise.all([
+      const [subRes, plansRes, paymentsRes, gwRes] = await Promise.all([
         apiClient.get('/store/billing/subscription'),
         apiClient.get('/store/billing/plans'),
         apiClient.get('/store/billing/payments'),
+        apiClient.get('/store/billing/gateways'),
       ]);
       setSubscription((subRes.data as any)?.subscription ?? null);
       setPlans((plansRes.data as any)?.plans ?? []);
+      setGateways((gwRes.data as any)?.payment_gateways ?? []);
       const rawPayments = (paymentsRes.data as any)?.data ?? paymentsRes.data ?? [];
       setPayments(Array.isArray(rawPayments) ? rawPayments : []);
     } catch (err) {
@@ -149,17 +178,57 @@ export default function BillingPage() {
     }
   };
 
-  const handleCheckout = async (planId: number) => {
+  const handleCheckout = async (planId: number, gateway = 'stripe') => {
     setCheckingOut(true);
     try {
-      const res = await apiClient.post('/store/billing/checkout', { gateway: 'stripe', plan_id: planId });
-      const url = (res.data as any)?.checkout?.checkout_url;
-      if (url) window.location.href = url;
-      else toast.error('Could not create checkout session.');
+      const res = await apiClient.post('/store/billing/checkout', { gateway, plan_id: planId });
+      const checkout = (res.data as any)?.checkout;
+
+      if (!checkout?.checkout_url) {
+        toast.error('Could not create checkout session.');
+        return;
+      }
+
+      // Standard redirect (Stripe, PayPal)
+      if (!checkout.method || checkout.method === 'GET') {
+        window.location.href = checkout.checkout_url;
+        return;
+      }
+
+      // Form-POST redirect (JazzCash, Easypaisa)
+      if (checkout.method === 'POST' && checkout.params) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = checkout.checkout_url;
+        form.style.display = 'none';
+        Object.entries(checkout.params as Record<string, string>).forEach(([k, v]) => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = k;
+          input.value = v;
+          form.appendChild(input);
+        });
+        document.body.appendChild(form);
+        form.submit();
+      }
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
       setCheckingOut(false);
+    }
+  };
+
+  const handleOpenPortal = async () => {
+    setOpeningPortal(true);
+    try {
+      const res = await apiClient.post('/store/billing/portal');
+      const url = (res.data as any)?.url;
+      if (url) window.location.href = url;
+      else toast.error('Could not open billing portal.');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setOpeningPortal(false);
     }
   };
 
@@ -204,6 +273,26 @@ export default function BillingPage() {
         <h1 className="font-display text-4xl font-bold tracking-tight">Billing</h1>
         <p className="text-muted-foreground mt-1">Manage your subscription and invoices</p>
       </div>
+
+      {/* Reactivation banner — shown when redirected from 402 */}
+      {searchParams.get('reactivate') === 'true' && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-start gap-3 p-4 rounded-xl bg-primary/10 border border-primary/30"
+        >
+          <AlertTriangle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-sm text-primary">Your subscription has expired</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Choose a plan below to restore access to your store immediately.
+            </p>
+          </div>
+          <Button size="sm" className="ml-auto shrink-0" onClick={() => { setSelectedGateway(null); setShowUpgradeModal(true); }}>
+            Choose a Plan
+          </Button>
+        </motion.div>
+      )}
 
       {/* Grace period warning */}
       {isGracePeriod && (
@@ -252,7 +341,13 @@ export default function BillingPage() {
           <div className="flex gap-2 flex-wrap">
             {subscription?.status === 'active' && (
               <>
-                <Button variant="outline" size="sm" onClick={() => setShowUpgradeModal(true)} className="gap-1.5">
+                {subscription.payment_gateway === 'stripe' && (
+                  <Button variant="outline" size="sm" onClick={handleOpenPortal} disabled={openingPortal} className="gap-1.5">
+                    {openingPortal ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
+                    Update Payment Method
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={() => { setSelectedGateway(null); setShowUpgradeModal(true); }} className="gap-1.5">
                   <ArrowUpRight className="h-3.5 w-3.5" />
                   Change Plan
                 </Button>
@@ -264,7 +359,7 @@ export default function BillingPage() {
               </>
             )}
             {(!subscription || subscription.status === 'expired' || subscription.status === 'cancelled') && (
-              <Button size="sm" onClick={() => setShowUpgradeModal(true)} className="gap-1.5">
+              <Button size="sm" onClick={() => { setSelectedGateway(null); setShowUpgradeModal(true); }} className="gap-1.5">
                 <RefreshCw className="h-3.5 w-3.5" />
                 {subscription?.status === 'cancelled' ? 'Reactivate' : 'Choose a Plan'}
               </Button>
@@ -397,6 +492,38 @@ export default function BillingPage() {
                   </button>
                 </div>
 
+                {/* PKR gateway selector — shown only when the selected plan is PKR and multiple gateways available */}
+                {(() => {
+                  const plan = plans.find(p => p.id === selectedPlanId);
+                  const pkrGateways = gateways.filter(g =>
+                    g.supported_currencies?.includes('PKR') && !['stripe', 'paypal', 'manual'].includes(g.slug)
+                  );
+                  if (!plan || plan.currency !== 'PKR' || pkrGateways.length <= 1) return null;
+                  return (
+                    <div className="mb-4">
+                      <p className="text-xs text-muted-foreground mb-2 font-medium">Pay via</p>
+                      <div className="flex gap-2">
+                        {pkrGateways.map(gw => (
+                          <button
+                            key={gw.slug}
+                            type="button"
+                            onClick={() => setSelectedGateway(gw.slug)}
+                            className={cn(
+                              'flex-1 py-2 px-3 rounded-lg border-2 text-sm font-medium transition-all capitalize',
+                              (selectedGateway ?? pkrGateways[0]?.slug) === gw.slug
+                                ? 'border-primary bg-primary/5 text-primary'
+                                : 'border-border text-muted-foreground hover:border-primary/30'
+                            )}
+                          >
+                            {gw.name}
+                            {gw.is_test_mode && <span className="ml-1 text-[10px] text-amber-500">(test)</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="grid sm:grid-cols-2 gap-3 mb-5">
                   {plans.filter((p) => p.price > 0).map((plan) => (
                     <button key={plan.id} type="button"
@@ -429,12 +556,13 @@ export default function BillingPage() {
                   <Button
                     onClick={() => {
                       if (!selectedPlanId) return;
-                      // If already subscribed → change plan; otherwise → checkout
                       if (subscription?.status === 'active') {
                         handleChangePlan();
                       } else {
+                        const plan = plans.find(p => p.id === selectedPlanId);
+                        const gw = resolveGateway(plan, selectedGateway);
                         setShowUpgradeModal(false);
-                        handleCheckout(selectedPlanId);
+                        handleCheckout(selectedPlanId, gw);
                       }
                     }}
                     disabled={!selectedPlanId || changingPlan || checkingOut || currentPlanId === selectedPlanId}

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Store, Users, DollarSign, AlertCircle, TrendingUp, Clock } from 'lucide-react';
+import { Store, Users, DollarSign, AlertCircle, TrendingUp, Clock, XCircle, CalendarClock } from 'lucide-react';
+import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { apiClient } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +20,14 @@ interface DashboardData {
     today_revenue: number;
     expiring_soon: number;
     new_stores_this_month: number;
+    subscriptions_expiring_7d: number;
+    central_payments: {
+      total: number;
+      completed_revenue: number;
+      pending: number;
+      failed: number;
+      failed_7d: number;
+    };
   };
   recent_errors: any[];
   recent_stores: any[];
@@ -41,11 +50,30 @@ export default function AdminDashboardPage() {
 
   if (!data) return null;
 
+  const failed7d   = data.stats.central_payments?.failed_7d ?? 0;
+  const expiring7d = data.stats.subscriptions_expiring_7d ?? 0;
+
   const stats = [
-    { label: 'Total Stores', value: data.stats.total_stores, icon: Store, color: 'from-primary/20 to-primary/5', iconColor: 'text-primary' },
-    { label: 'Active Stores', value: data.stats.active_stores, icon: TrendingUp, color: 'from-success/20 to-success/5', iconColor: 'text-success' },
-    { label: 'Total Users', value: data.stats.total_users, icon: Users, color: 'from-accent/20 to-accent/5', iconColor: 'text-accent' },
-    { label: 'Month Revenue', value: formatCurrency(data.stats.month_revenue), icon: DollarSign, color: 'from-warning/20 to-warning/5', iconColor: 'text-warning-foreground' },
+    { label: 'Total Stores',   value: data.stats.total_stores,  icon: Store,      color: 'from-primary/20 to-primary/5',    iconColor: 'text-primary',           href: '/admin/stores' },
+    { label: 'Active Stores',  value: data.stats.active_stores, icon: TrendingUp, color: 'from-success/20 to-success/5',    iconColor: 'text-success',           href: '/admin/stores' },
+    { label: 'Total Users',    value: data.stats.total_users,   icon: Users,      color: 'from-accent/20 to-accent/5',      iconColor: 'text-accent',            href: null },
+    { label: 'Month Revenue',  value: formatCurrency(data.stats.month_revenue), icon: DollarSign, color: 'from-warning/20 to-warning/5', iconColor: 'text-warning-foreground', href: '/admin/payments' },
+    {
+      label: 'Failed Payments (7d)',
+      value: failed7d,
+      icon: XCircle,
+      color: failed7d > 0 ? 'from-destructive/20 to-destructive/5' : 'from-muted/40 to-muted/20',
+      iconColor: failed7d > 0 ? 'text-destructive' : 'text-muted-foreground',
+      href: '/admin/payments?status=failed',
+    },
+    {
+      label: 'Expiring Subs (7d)',
+      value: expiring7d,
+      icon: CalendarClock,
+      color: expiring7d > 0 ? 'from-warning/20 to-warning/5' : 'from-muted/40 to-muted/20',
+      iconColor: expiring7d > 0 ? 'text-warning-foreground' : 'text-muted-foreground',
+      href: '/admin/subscriptions?expiring_days=7',
+    },
   ];
 
   return (
@@ -55,15 +83,10 @@ export default function AdminDashboardPage() {
         <p className="text-muted-foreground mt-1">Platform overview and key metrics</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-          >
-            <Card className={`p-5 bg-gradient-to-br ${stat.color} border-0 relative overflow-hidden`}>
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {stats.map((stat, i) => {
+          const CardContent = (
+            <Card className={`p-5 bg-gradient-to-br ${stat.color} border-0 relative overflow-hidden h-full ${stat.href ? 'hover:opacity-90 transition-opacity cursor-pointer' : ''}`}>
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{stat.label}</p>
@@ -74,8 +97,13 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
             </Card>
-          </motion.div>
-        ))}
+          );
+          return (
+            <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+              {stat.href ? <Link href={stat.href}>{CardContent}</Link> : CardContent}
+            </motion.div>
+          );
+        })}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">

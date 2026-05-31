@@ -29,14 +29,26 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError<any>) => {
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
-      // Token expired/invalid - clear and redirect to login
+    if (typeof window === 'undefined') return Promise.reject(error);
+
+    if (error.response?.status === 401) {
+      // Token expired/invalid — clear and redirect to login
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_user');
       if (!window.location.pathname.startsWith('/login')) {
         window.location.href = '/login';
       }
     }
+
+    if (error.response?.status === 402) {
+      // Subscription expired — redirect to billing reactivation page
+      // Only redirect if we're inside the dashboard (not already on billing)
+      const path = window.location.pathname;
+      if (path.startsWith('/dashboard') && !path.startsWith('/dashboard/billing')) {
+        window.location.href = '/dashboard/billing?reactivate=true';
+      }
+    }
+
     return Promise.reject(error);
   }
 );

@@ -3,12 +3,10 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  CreditCard,
   CheckCircle2,
   XCircle,
   Settings2,
   Wifi,
-  WifiOff,
   Loader2,
   Eye,
   EyeOff,
@@ -46,6 +44,7 @@ const CREDENTIAL_FIELDS: Record<string, { key: string; label: string; placeholde
   paypal: [
     { key: 'client_id', label: 'Client ID', placeholder: 'PayPal app client ID' },
     { key: 'client_secret', label: 'Client Secret', placeholder: 'PayPal app secret', secret: true },
+    { key: 'webhook_id', label: 'Webhook ID', placeholder: 'From PayPal Developer → Webhooks' },
   ],
   jazzcash: [
     { key: 'merchant_id', label: 'Merchant ID', placeholder: 'JazzCash merchant ID' },
