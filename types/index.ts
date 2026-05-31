@@ -85,6 +85,120 @@ export interface LandingSection {
   sort_order: number;
 }
 
+// ============================================================================
+// Phase 4 — Catalog types
+// ============================================================================
+
+export interface Category {
+  id: number;
+  parent_id: number | null;
+  name: string;
+  slug: string;
+  image: string | null;
+  description: string | null;
+  is_active: boolean;
+  sort_order: number;
+  products_count?: number;
+  children?: Category[];
+}
+
+export interface Brand {
+  id: number;
+  name: string;
+  slug: string;
+  logo: string | null;
+  is_active: boolean;
+  products_count?: number;
+}
+
+export interface TaxRate {
+  id: number;
+  name: string;
+  rate: number;
+  is_inclusive: boolean;
+  is_active: boolean;
+  products_count?: number;
+}
+
+export interface Unit {
+  id: number;
+  name: string;
+  short_code: string;
+  is_decimal: boolean;
+  products_count?: number;
+}
+
+export interface ProductVariant {
+  id: number;
+  product_id: number;
+  name: string;
+  sku: string;
+  barcode: string | null;
+  attributes: Record<string, string> | null;
+  cost_price: number;
+  selling_price: number;
+  image: string | null;
+  is_active: boolean;
+  sort_order: number;
+  total_stock?: number;
+}
+
+export interface ProductImage {
+  id: number;
+  product_id: number;
+  variant_id: number | null;
+  path: string;
+  alt_text: string | null;
+  sort_order: number;
+  is_primary: boolean;
+}
+
+export interface Product {
+  id: number;
+  name: string;
+  slug: string;
+  sku: string;
+  barcode: string | null;
+  description: string | null;
+  image: string | null;
+  gallery: string[] | null;
+  type: 'simple' | 'variable';
+  category_id: number | null;
+  brand_id: number | null;
+  unit_id: number | null;
+  tax_rate_id: number | null;
+  cost_price: number;
+  selling_price: number;
+  msrp: number | null;
+  track_stock: boolean;
+  allow_negative_stock: boolean;
+  low_stock_threshold: number | null;
+  is_active: boolean;
+  created_by: number | null;
+  total_stock?: number;
+  variants_count?: number;
+  category?: Pick<Category, 'id' | 'name'>;
+  brand?: Pick<Brand, 'id' | 'name'>;
+  unit?: Pick<Unit, 'id' | 'name' | 'short_code'>;
+  tax_rate?: TaxRate;
+  variants?: ProductVariant[];
+  images?: ProductImage[];
+  primary_image?: ProductImage;
+}
+
+export interface InventoryItem {
+  id: number;
+  product_id: number;
+  variant_id: number | null;
+  branch_id: number;
+  quantity: number;
+  reserved_quantity: number;
+  available?: number;
+  last_counted_at: string | null;
+  product?: Pick<Product, 'id' | 'name' | 'sku'>;
+  variant?: Pick<ProductVariant, 'id' | 'name' | 'sku'>;
+}
+
 export interface ApiLog {
   id: number;
   user_id: number | null;

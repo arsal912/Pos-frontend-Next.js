@@ -15,6 +15,8 @@ import {
   Loader2,
   CreditCard,
   AlertTriangle,
+  Tag,
+  Layers,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,13 +25,15 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { href: '/dashboard/pos', label: 'POS Sales', icon: ShoppingCart },
-  { href: '/dashboard/products', label: 'Products', icon: Package },
-  { href: '/dashboard/customers', label: 'Customers', icon: Users },
-  { href: '/dashboard/reports', label: 'Reports', icon: BarChart3 },
-  { href: '/dashboard/billing', label: 'Billing', icon: CreditCard },
-  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+  { href: '/dashboard',           label: 'Dashboard', icon: LayoutDashboard, exact: true },
+  { href: '/dashboard/pos',       label: 'POS Sales',  icon: ShoppingCart },
+  { href: '/dashboard/products',  label: 'Products',   icon: Package },
+  { href: '/dashboard/categories',label: 'Categories', icon: Layers },
+  { href: '/dashboard/brands',    label: 'Brands',     icon: Tag },
+  { href: '/dashboard/inventory', label: 'Inventory',  icon: BarChart3 },
+  { href: '/dashboard/customers', label: 'Customers',  icon: Users },
+  { href: '/dashboard/billing',   label: 'Billing',    icon: CreditCard },
+  { href: '/dashboard/settings',  label: 'Settings',   icon: Settings },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
