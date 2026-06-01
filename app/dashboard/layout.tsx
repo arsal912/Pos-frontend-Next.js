@@ -17,6 +17,11 @@ import {
   AlertTriangle,
   Tag,
   Layers,
+  Truck,
+  FileText,
+  ClipboardCheck,
+  ArrowLeftRight,
+  Vault,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,15 +30,20 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 const NAV_ITEMS = [
-  { href: '/dashboard',           label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { href: '/dashboard/pos',       label: 'POS Sales',  icon: ShoppingCart },
-  { href: '/dashboard/products',  label: 'Products',   icon: Package },
-  { href: '/dashboard/categories',label: 'Categories', icon: Layers },
-  { href: '/dashboard/brands',    label: 'Brands',     icon: Tag },
-  { href: '/dashboard/inventory', label: 'Inventory',  icon: BarChart3 },
-  { href: '/dashboard/customers', label: 'Customers',  icon: Users },
-  { href: '/dashboard/billing',   label: 'Billing',    icon: CreditCard },
-  { href: '/dashboard/settings',  label: 'Settings',   icon: Settings },
+  { href: '/dashboard',                label: 'Dashboard',       icon: LayoutDashboard, exact: true },
+  { href: '/dashboard/pos',            label: 'POS Sales',       icon: ShoppingCart },
+  { href: '/dashboard/products',       label: 'Products',        icon: Package },
+  { href: '/dashboard/categories',     label: 'Categories',      icon: Layers },
+  { href: '/dashboard/brands',         label: 'Brands',          icon: Tag },
+  { href: '/dashboard/inventory',      label: 'Inventory',       icon: BarChart3 },
+  { href: '/dashboard/suppliers',      label: 'Suppliers',       icon: Truck },
+  { href: '/dashboard/purchase-orders',label: 'Purchase Orders', icon: FileText },
+  { href: '/dashboard/grns',           label: 'GRNs',            icon: ClipboardCheck },
+  { href: '/dashboard/stock-transfers',label: 'Transfers',       icon: ArrowLeftRight },
+  { href: '/dashboard/customers',      label: 'Customers',       icon: Users },
+  { href: '/dashboard/cash-drawer',    label: 'Cash Drawer',     icon: Vault },
+  { href: '/dashboard/billing',        label: 'Billing',         icon: CreditCard },
+  { href: '/dashboard/settings',       label: 'Settings',        icon: Settings },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

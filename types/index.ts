@@ -199,6 +199,230 @@ export interface InventoryItem {
   variant?: Pick<ProductVariant, 'id' | 'name' | 'sku'>;
 }
 
+// ============================================================================
+// Phase 4 — POS / Sales types
+// ============================================================================
+
+export type PaymentMethod = 'cash' | 'card' | 'bank_transfer' | 'jazzcash' | 'easypaisa' | 'store_credit' | 'other';
+
+export interface SaleItem {
+  id: number;
+  sale_id: number;
+  product_id: number;
+  variant_id: number | null;
+  product_name: string;
+  sku: string;
+  quantity: number;
+  unit_price: number;
+  cost_at_time: number;
+  tax_rate: number;
+  tax_amount: number;
+  discount_amount: number;
+  line_total: number;
+}
+
+export interface SalePayment {
+  id: number;
+  sale_id: number;
+  method: PaymentMethod;
+  amount: number;
+  reference: string | null;
+  notes: string | null;
+}
+
+export interface Sale {
+  id: number;
+  sale_number: string;
+  branch_id: number;
+  customer_id: number | null;
+  cashier_id: number;
+  sale_date: string;
+  subtotal: number;
+  tax_amount: number;
+  discount_amount: number;
+  discount_type: 'fixed' | 'percent' | null;
+  discount_reason: string | null;
+  total: number;
+  paid_amount: number;
+  change_given: number;
+  balance: number;
+  status: 'draft' | 'completed' | 'refunded' | 'partially_refunded' | 'cancelled';
+  payment_status: 'pending' | 'paid' | 'partial' | 'refunded';
+  notes: string | null;
+  items?: SaleItem[];
+  payments?: SalePayment[];
+  customer?: Customer | null;
+}
+
+export interface CashDrawerSession {
+  id: number;
+  branch_id: number;
+  cashier_id: number;
+  opened_at: string;
+  opening_balance: number;
+  closed_at: string | null;
+  closing_balance: number | null;
+  expected_balance: number | null;
+  over_short: number | null;
+}
+
+export interface HoldSale {
+  id: number;
+  name: string;
+  customer_id: number | null;
+  data: any;
+  created_at: string;
+}
+
+// ============================================================================
+// Phase 4 — Customer types
+// ============================================================================
+
+export interface Customer {
+  id: number;
+  code: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  tax_number: string | null;
+  billing_address: string | null;
+  shipping_address: string | null;
+  city: string | null;
+  country: string | null;
+  date_of_birth: string | null;
+  gender: 'male' | 'female' | 'other' | 'prefer_not_say' | null;
+  opening_balance: number;
+  credit_limit: number | null;
+  notes: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+// ============================================================================
+// Phase 4 — Inventory & Supply Chain types
+// ============================================================================
+
+export interface StockMovement {
+  id: number;
+  product_id: number;
+  variant_id: number | null;
+  branch_id: number;
+  type: string;
+  reference_type: string | null;
+  reference_id: number | null;
+  quantity: number;
+  cost_at_time: number;
+  balance_after: number;
+  notes: string | null;
+  created_by: number | null;
+  created_at: string;
+  product?: Pick<Product, 'id' | 'name' | 'sku'>;
+  variant?: Pick<ProductVariant, 'id' | 'name' | 'sku'>;
+}
+
+export interface Supplier {
+  id: number;
+  name: string;
+  company: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  city: string | null;
+  country: string | null;
+  tax_number: string | null;
+  opening_balance: number;
+  is_active: boolean;
+  notes: string | null;
+  purchase_orders_count?: number;
+}
+
+export interface PurchaseOrderItem {
+  id: number;
+  purchase_order_id: number;
+  product_id: number;
+  variant_id: number | null;
+  quantity_ordered: number;
+  quantity_received: number;
+  unit_cost: number;
+  tax_rate: number;
+  discount: number;
+  subtotal: number;
+  product?: Pick<Product, 'id' | 'name' | 'sku'>;
+  variant?: Pick<ProductVariant, 'id' | 'name' | 'sku'>;
+}
+
+export interface PurchaseOrder {
+  id: number;
+  po_number: string;
+  supplier_id: number;
+  branch_id: number;
+  order_date: string;
+  expected_delivery_date: string | null;
+  status: 'draft' | 'sent' | 'partially_received' | 'received' | 'cancelled';
+  subtotal: number;
+  tax_amount: number;
+  discount_amount: number;
+  total: number;
+  notes: string | null;
+  terms: string | null;
+  created_at: string;
+  supplier?: Pick<Supplier, 'id' | 'name' | 'company'>;
+  items?: PurchaseOrderItem[];
+  items_count?: number;
+}
+
+export interface GrnItem {
+  id: number;
+  grn_id: number;
+  product_id: number;
+  variant_id: number | null;
+  quantity_received: number;
+  unit_cost: number;
+  po_item_id: number | null;
+  product?: Pick<Product, 'id' | 'name' | 'sku'>;
+}
+
+export interface Grn {
+  id: number;
+  grn_number: string;
+  purchase_order_id: number | null;
+  supplier_id: number | null;
+  branch_id: number;
+  received_date: string;
+  status: 'draft' | 'received';
+  notes: string | null;
+  created_at: string;
+  supplier?: Pick<Supplier, 'id' | 'name'>;
+  purchase_order?: Pick<PurchaseOrder, 'id' | 'po_number'>;
+  items?: GrnItem[];
+  items_count?: number;
+}
+
+export interface StockAdjustmentItem {
+  id: number;
+  product_id: number;
+  variant_id: number | null;
+  quantity_before: number;
+  quantity_after: number;
+  difference: number;
+  cost_at_time: number;
+  product?: Pick<Product, 'id' | 'name' | 'sku'>;
+}
+
+export interface StockAdjustment {
+  id: number;
+  branch_id: number;
+  reason: 'damage' | 'loss' | 'count_correction' | 'expired' | 'other';
+  notes: string | null;
+  status: 'draft' | 'approved' | 'rejected';
+  created_by: number | null;
+  approved_by: number | null;
+  approved_at: string | null;
+  created_at: string;
+  items?: StockAdjustmentItem[];
+}
+
 export interface ApiLog {
   id: number;
   user_id: number | null;

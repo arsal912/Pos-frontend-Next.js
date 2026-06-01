@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Search, Eye, Ban, Play, KeyRound, Loader2, Store as StoreIcon } from 'lucide-react';
+import { Search, Eye, Ban, Play, KeyRound, Loader2, Store as StoreIcon, BarChart3 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -171,6 +171,9 @@ export default function AdminStoresPage() {
                   <div className="flex items-center gap-1.5">
                     <Button variant="ghost" size="icon" asChild title="View details">
                       <Link href={`/admin/stores/${store.id}`}><Eye className="h-4 w-4" /></Link>
+                    </Button>
+                    <Button variant="ghost" size="icon" asChild title="Analytics">
+                      <Link href={`/admin/stores/${store.id}/analytics`}><BarChart3 className="h-4 w-4" /></Link>
                     </Button>
                     <Button variant="ghost" size="icon" onClick={() => handleImpersonate(store.id, store.name)} title="Login as owner">
                       <KeyRound className="h-4 w-4" />
