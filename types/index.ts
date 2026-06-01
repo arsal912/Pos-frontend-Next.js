@@ -278,6 +278,20 @@ export interface HoldSale {
 // Phase 4 — Customer types
 // ============================================================================
 
+export interface CustomerGroup {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  default_discount_percent: number | null;
+  earns_loyalty_points: boolean;
+  is_default: boolean;
+  color: string;
+  is_active: boolean;
+  sort_order: number;
+  customers_count?: number;
+}
+
 export interface Customer {
   id: number;
   code: string;
@@ -297,6 +311,79 @@ export interface Customer {
   notes: string | null;
   is_active: boolean;
   created_at: string;
+  // Phase 4C
+  customer_group_id: number | null;
+  loyalty_points_balance: number;
+  lifetime_value: number;
+  outstanding_balance: number;
+  last_purchase_at: string | null;
+  total_purchases_count: number;
+  sms_marketing_opted_in: boolean;
+  email_marketing_opted_in: boolean;
+  whatsapp_marketing_opted_in: boolean;
+  referral_code: string | null;
+  referred_by_customer_id: number | null;
+  tags: string[] | null;
+  group?: CustomerGroup | null;
+}
+
+export interface LoyaltyTransaction {
+  id: number;
+  customer_id: number;
+  type: string;
+  points: number;
+  balance_after: number;
+  reference_type: string | null;
+  reference_id: number | null;
+  description: string;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface CreditTransaction {
+  id: number;
+  customer_id: number;
+  type: string;
+  amount: number;
+  balance_after: number;
+  payment_method: string | null;
+  reference_type: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface CustomerNote {
+  id: number;
+  customer_id: number;
+  note: string;
+  is_pinned: boolean;
+  created_by: number | null;
+  created_at: string;
+}
+
+export interface CustomerSegment {
+  id: number;
+  name: string;
+  description: string | null;
+  rules: any[];
+  customer_count_cached: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface LoyaltySettings {
+  id: number;
+  is_enabled: boolean;
+  points_per_currency_unit: number;
+  redemption_value: number;
+  minimum_points_to_redeem: number;
+  maximum_redemption_per_sale: number | null;
+  points_expiry_days: number | null;
+  earn_on_discounted_sales: boolean;
+  earn_on_tax: boolean;
+  welcome_bonus_points: number;
+  birthday_bonus_points: number;
+  referral_bonus_points: number;
 }
 
 // ============================================================================

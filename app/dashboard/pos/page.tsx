@@ -6,11 +6,12 @@ import {
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Search, ShoppingCart, X, Plus, Minus, Trash2, User, Tag,
-  Pause, Loader2, Package, Keyboard,
+  Pause, Loader2, Package, Keyboard, Gift, CreditCard,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { apiClient, getErrorMessage } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -35,14 +36,18 @@ export default function PosPage() {
   const [productMeta, setProductMeta]       = useState<any>(null);
   const [loadingProducts, setLoadingProducts] = useState(false);
 
-  const [showCustomer, setShowCustomer] = useState(false);
-  const [showPayment, setShowPayment]   = useState(false);
-  const [showHolds, setShowHolds]       = useState(false);
-  const [showDiscount, setShowDiscount] = useState(false);
+  const [showCustomer, setShowCustomer]   = useState(false);
+  const [showPayment, setShowPayment]     = useState(false);
+  const [showHolds, setShowHolds]         = useState(false);
+  const [showDiscount, setShowDiscount]   = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const [editItem, setEditItem]         = useState<SaleItem | null>(null);
-  const [holds, setHolds]               = useState<HoldSale[]>([]);
-  const [holdName, setHoldName]         = useState('');
+  const [showRedeem, setShowRedeem]       = useState(false);
+  const [editItem, setEditItem]           = useState<SaleItem | null>(null);
+  const [holds, setHolds]                 = useState<HoldSale[]>([]);
+  const [holdName, setHoldName]           = useState('');
+  const [redeemPoints, setRedeemPoints]   = useState('');
+  const [redeemingPoints, setRedeemingPoints] = useState(false);
+  const [loyaltyEarnedLastSale, setLoyaltyEarnedLastSale] = useState<{points:number;balance_after:number}|null>(null);
 
   const [discountType, setDiscountType]   = useState<'fixed' | 'percent'>('percent');
   const [discountValue, setDiscountValue] = useState('');
@@ -202,10 +207,35 @@ export default function PosPage() {
     } catch (err) { toast.error(getErrorMessage(err)); }
   };
 
+  const handleRedeemPoints = async () => {
+    if (!sale || !redeemPoints || !customer?.id) return;
+    const pts = parseFloat(redeemPoints);
+    if (pts <= 0) return toast.error('Enter valid points to redeem.');
+    setRedeemingPoints(true);
+    try {
+      // Add loyalty_points payment to the sale
+      const rsValue = pts; // 1 point = 1 Rs (configurable via settings; simplified here)
+      await apiClient.post(`/store/pos/sales/${sale.id}/payments`, {
+        method: 'loyalty_points',
+        amount: rsValue,
+        notes: `Redeemed ${pts} loyalty points`,
+      });
+      // Refresh sale
+      const refreshed = await apiClient.get(`/store/sales/${sale.id}`);
+      setSale((refreshed.data as any)?.sale ?? sale);
+      setShowRedeem(false);
+      setRedeemPoints('');
+      toast.success(`${pts} points redeemed — Rs ${rsValue.toFixed(2)} off`);
+    } catch (err) { toast.error(getErrorMessage(err)); }
+    finally { setRedeemingPoints(false); }
+  };
+
   const handlePayments = async (payments: { method: PaymentMethod; amount: number }[]) => {
     if (!sale) return;
     for (const p of payments) await apiClient.post(`/store/pos/sales/${sale.id}/payments`, p);
     const res = await apiClient.post(`/store/pos/sales/${sale.id}/complete`);
+    const earned = (res.data as any)?.loyalty_earned;
+    if (earned) setLoyaltyEarnedLastSale(earned);
     setCompletedSale((res.data as any)?.sale);
     setShowPayment(false);
     localStorage.removeItem(CART_KEY);
@@ -214,6 +244,7 @@ export default function PosPage() {
   const startNewSale = async () => {
     setCompletedSale(null);
     setSale(null);
+    setLoyaltyEarnedLastSale(null);
     setSaleLoading(true);
     try { await createNewSale(); }
     finally { setSaleLoading(false); setTimeout(() => searchRef.current?.focus(), 200); }
@@ -342,12 +373,35 @@ export default function PosPage() {
             <span className="font-display font-bold">Cart</span>
             {itemCount > 0 && <Badge variant="default" className="h-5 px-1.5 text-xs">{Math.round(itemCount)}</Badge>}
           </div>
-          <button onClick={() => setShowCustomer(true)}
-            className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
-              customer ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground hover:bg-muted/80')}>
-            <User className="h-3.5 w-3.5" />
-            {customer ? customer.name.split(' ')[0] : 'Walk-in (F3)'}
-          </button>
+          <div className="flex flex-col items-end gap-0.5">
+            <button onClick={() => setShowCustomer(true)}
+              className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
+                customer ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground hover:bg-muted/80')}>
+              <User className="h-3.5 w-3.5" />
+              {customer ? customer.name.split(' ')[0] : 'Walk-in (F3)'}
+            </button>
+            {customer && (
+              <div className="flex gap-1.5">
+                {(customer.loyalty_points_balance ?? 0) > 0 && (
+                  <button onClick={() => setShowRedeem(true)}
+                    className="flex items-center gap-0.5 text-[10px] text-success hover:underline">
+                    <Gift className="h-2.5 w-2.5" />{Number(customer.loyalty_points_balance).toFixed(0)} pts
+                  </button>
+                )}
+                {(customer.outstanding_balance ?? 0) > 0 && (
+                  <span className="flex items-center gap-0.5 text-[10px] text-destructive">
+                    <CreditCard className="h-2.5 w-2.5" />{Number(customer.outstanding_balance).toFixed(2)} owed
+                  </span>
+                )}
+                {customer.group && (
+                  <span className="text-[10px] px-1.5 rounded-full font-medium"
+                    style={{background:customer.group.color+'20',color:customer.group.color}}>
+                    {customer.group.name}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5">
@@ -508,7 +562,51 @@ export default function PosPage() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {completedSale && <ReceiptScreen sale={completedSale} onNewSale={startNewSale} />}
+        {completedSale && (
+          <ReceiptScreen
+            sale={completedSale}
+            onNewSale={startNewSale}
+            loyaltyEarned={loyaltyEarnedLastSale}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Loyalty Redeem Modal */}
+      <AnimatePresence>
+        {showRedeem && customer && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={()=>setShowRedeem(false)}/>
+            <motion.div initial={{opacity:0,scale:0.95}} animate={{opacity:1,scale:1}} exit={{opacity:0,scale:0.95}} className="relative z-10 w-full max-w-sm">
+              <Card className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Gift className="h-5 w-5 text-success"/>
+                  <h2 className="font-display font-bold">Redeem Loyalty Points</h2>
+                </div>
+                <div className="bg-success/10 rounded-xl p-3 mb-4 text-center">
+                  <p className="text-2xl font-display font-bold text-success">{Number(customer.loyalty_points_balance??0).toFixed(0)}</p>
+                  <p className="text-xs text-muted-foreground">points available</p>
+                </div>
+                <div className="space-y-3 mb-4">
+                  <div className="space-y-1.5">
+                    <Label>Points to redeem</Label>
+                    <Input type="number" min="0" max={Number(customer.loyalty_points_balance??0)} value={redeemPoints} onChange={e=>setRedeemPoints(e.target.value)} placeholder="0"/>
+                  </div>
+                  {redeemPoints && parseFloat(redeemPoints) > 0 && (
+                    <div className="text-sm text-center text-muted-foreground">
+                      = <strong className="text-success">{parseFloat(redeemPoints).toFixed(2)} Rs</strong> discount
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={()=>setShowRedeem(false)} className="flex-1">Cancel</Button>
+                  <Button onClick={handleRedeemPoints} disabled={redeemingPoints||!redeemPoints} className="flex-1 gap-2">
+                    {redeemingPoints&&<Loader2 className="h-4 w-4 animate-spin"/>}Apply Discount
+                  </Button>
+                </div>
+              </Card>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
     </div>
   );

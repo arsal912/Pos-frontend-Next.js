@@ -22,6 +22,8 @@ import {
   ClipboardCheck,
   ArrowLeftRight,
   Vault,
+  Gift,
+  BadgeDollarSign,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +43,8 @@ const NAV_ITEMS = [
   { href: '/dashboard/grns',           label: 'GRNs',            icon: ClipboardCheck },
   { href: '/dashboard/stock-transfers',label: 'Transfers',       icon: ArrowLeftRight },
   { href: '/dashboard/customers',      label: 'Customers',       icon: Users },
+  { href: '/dashboard/loyalty',        label: 'Loyalty',         icon: Gift },
+  { href: '/dashboard/credit',         label: 'Credit',          icon: BadgeDollarSign },
   { href: '/dashboard/cash-drawer',    label: 'Cash Drawer',     icon: Vault },
   { href: '/dashboard/billing',        label: 'Billing',         icon: CreditCard },
   { href: '/dashboard/settings',       label: 'Settings',        icon: Settings },

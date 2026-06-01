@@ -2,16 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Printer, RefreshCw, Mail, Loader2 } from 'lucide-react';
+import { CheckCircle2, Printer, RefreshCw, Loader2, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Sale } from '@/types';
 
 interface Props {
   sale: Sale;
   onNewSale: () => void;
+  loyaltyEarned?: { points: number; balance_after: number } | null;
 }
 
-export default function ReceiptScreen({ sale, onNewSale }: Props) {
+export default function ReceiptScreen({ sale, onNewSale, loyaltyEarned }: Props) {
   const [countdown, setCountdown] = useState(8);
   const [printing, setPrinting] = useState(false);
 
@@ -25,33 +26,26 @@ export default function ReceiptScreen({ sale, onNewSale }: Props) {
     return () => clearInterval(timer);
   }, [onNewSale]);
 
-  const handlePrint = async () => {
-    setPrinting(true);
-    try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-      const res = await fetch(`/api/backend/store/pos/sales/${sale.id}/receipt?format=thermal`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const html = await res.text();
-      const win = window.open('', '_blank');
-      if (win) {
-        win.document.write(html);
-        win.document.close();
-        win.print();
-      }
-    } finally {
-      setPrinting(false);
-    }
-  };
-
-  const handlePrintA4 = async () => {
+  const openReceipt = async (format: string) => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    const res = await fetch(`/api/backend/store/pos/sales/${sale.id}/receipt?format=a4`, {
+    const res = await fetch(`/api/backend/store/pos/sales/${sale.id}/receipt?format=${format}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const html = await res.text();
     const win = window.open('', '_blank');
-    if (win) { win.document.write(html); win.document.close(); win.print(); }
+    if (win) {
+      // Use innerHTML on a new document instead of document.write (avoids deprecation warning)
+      win.document.open();
+      win.document.write(html);
+      win.document.close();
+      win.print();
+    }
+  };
+
+  const handlePrint = async () => {
+    setPrinting(true);
+    try { await openReceipt('thermal'); }
+    finally { setPrinting(false); }
   };
 
   const handleDownloadPdf = () => {
@@ -60,7 +54,10 @@ export default function ReceiptScreen({ sale, onNewSale }: Props) {
       headers: { Authorization: `Bearer ${token}` },
     }).then(r => r.blob()).then(blob => {
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = `${sale.sale_number}.pdf`; a.click();
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${sale.sale_number}.pdf`;
+      a.click();
       URL.revokeObjectURL(url);
     });
   };
@@ -83,10 +80,26 @@ export default function ReceiptScreen({ sale, onNewSale }: Props) {
       <p className="text-muted-foreground text-center mb-1">
         {sale.sale_number} · Total {Number(sale.total).toFixed(2)}
       </p>
+
       {Number(sale.change_given) > 0 && (
         <div className="mt-2 px-4 py-2 bg-success/10 rounded-xl text-center">
           <p className="text-success font-bold text-lg">Change: {Number(sale.change_given).toFixed(2)}</p>
         </div>
+      )}
+
+      {/* Loyalty points earned notification */}
+      {loyaltyEarned && loyaltyEarned.points > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="mt-3 px-4 py-2.5 bg-success/10 border border-success/30 rounded-xl flex items-center gap-2"
+        >
+          <Gift className="h-4 w-4 text-success flex-shrink-0" />
+          <p className="text-sm text-success font-medium">
+            +{loyaltyEarned.points.toFixed(0)} points earned · Balance: {loyaltyEarned.balance_after.toFixed(0)} pts
+          </p>
+        </motion.div>
       )}
 
       <div className="flex flex-wrap gap-3 justify-center mt-8">
@@ -94,7 +107,7 @@ export default function ReceiptScreen({ sale, onNewSale }: Props) {
           {printing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
           Print Thermal
         </Button>
-        <Button variant="outline" onClick={handlePrintA4} className="gap-2">
+        <Button variant="outline" onClick={() => openReceipt('a4')} className="gap-2">
           <Printer className="h-4 w-4" />Print A4
         </Button>
         <Button variant="outline" onClick={handleDownloadPdf} className="gap-2">
