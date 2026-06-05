@@ -46,6 +46,7 @@ const NAV_ITEMS = [
   { href: '/dashboard/loyalty',        label: 'Loyalty',         icon: Gift },
   { href: '/dashboard/credit',         label: 'Credit',          icon: BadgeDollarSign },
   { href: '/dashboard/cash-drawer',    label: 'Cash Drawer',     icon: Vault },
+  { href: '/dashboard/reports',        label: 'Reports',         icon: BarChart3 },
   { href: '/dashboard/billing',        label: 'Billing',         icon: CreditCard },
   { href: '/dashboard/settings',       label: 'Settings',        icon: Settings },
 ];

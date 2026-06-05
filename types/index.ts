@@ -1,3 +1,78 @@
+// ============================================================================
+// Phase 4D — Reports types
+// ============================================================================
+
+export interface ReportSummaryCard {
+  label: string;
+  value: string;
+  raw: number | string;
+  trend?: number | null;
+  format?: 'money' | 'int' | 'pct' | 'string';
+}
+
+export interface ReportColumn {
+  key: string;
+  label: string;
+  type: 'money' | 'number' | 'int' | 'percent' | 'date' | 'string';
+  align?: 'left' | 'right' | 'center';
+  total?: boolean;
+}
+
+export interface ReportChartData {
+  type: 'line' | 'bar' | 'pie' | 'area';
+  labels: string[];
+  series: { name: string; data: number[] }[];
+}
+
+export interface ReportMeta {
+  filters_used: Record<string, any>;
+  date_from?: string;
+  date_to?: string;
+  generated_at: string;
+  row_count: number;
+  timezone?: string;
+}
+
+export interface ReportResult {
+  summary: ReportSummaryCard[];
+  rows: Record<string, any>[];
+  groups?: Record<string, { label: string; rows: Record<string, any>[]; subtotals?: Record<string, any> }>;
+  chart_data?: ReportChartData;
+  comparison?: ReportResult;
+  meta: ReportMeta;
+  columns: ReportColumn[];
+  totals?: Record<string, any>;
+}
+
+export interface ReportFilterSchema {
+  key: string;
+  type: 'date_range' | 'branch_select' | 'select' | 'multi_select' | 'number' | 'text' | 'date';
+  label: string;
+  default?: any;
+  required?: boolean;
+  options?: { value: string | number; label: string }[];
+}
+
+export interface ReportInfo {
+  slug: string;
+  name: string;
+  category: string;
+  description?: string;
+  required_module?: string | null;
+  required_permission?: string | null;
+}
+
+export interface ReportSchema {
+  slug: string;
+  name: string;
+  category: string;
+  description: string;
+  filter_schema: ReportFilterSchema[];
+  default_filters: Record<string, any>;
+}
+
+// ============================================================================
+
 export interface User {
   id: number;
   name: string;

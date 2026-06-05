@@ -17,6 +17,7 @@ import {
   CreditCard,
   Receipt,
   Users,
+  BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/auth';
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
   { href: '/admin/payments',         label: 'Payments',         icon: Receipt },
   { href: '/admin/modules',          label: 'Modules',          icon: Puzzle },
   { href: '/admin/payment-gateways', label: 'Gateways',         icon: CreditCard },
+  { href: '/admin/reports',          label: 'Reports',          icon: BarChart3 },
   { href: '/admin/landing-page',     label: 'Landing Page',     icon: Globe },
   { href: '/admin/api-logs',         label: 'API Logs',         icon: ScrollText },
 ];
