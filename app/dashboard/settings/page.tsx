@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   Printer, Settings2, Tag, Ruler, Receipt, Percent,
-  ChevronRight,
+  ChevronRight, MessageSquare,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { useAuthStore } from '@/store/auth';
@@ -13,7 +13,8 @@ const SETTING_LINKS = [
   { href: '/dashboard/settings/pos',       icon: Settings2, label: 'POS Configuration',    desc: 'Tax, rounding, currency display, defaults' },
   { href: '/dashboard/settings/receipt',   icon: Printer,   label: 'Receipt Templates',    desc: 'Customize thermal and A4 receipt layouts' },
   { href: '/dashboard/settings/tax-rates', icon: Percent,   label: 'Tax Rates',            desc: 'GST, VAT and other tax rates' },
-  { href: '/dashboard/settings/units',     icon: Ruler,     label: 'Units of Measure',     desc: 'Piece, Kg, Litre, etc.' },
+  { href: '/dashboard/settings/units',           icon: Ruler,         label: 'Units of Measure',     desc: 'Piece, Kg, Litre, etc.' },
+  { href: '/dashboard/settings/communications', icon: MessageSquare, label: 'Communications',        desc: 'SMS, email & WhatsApp sender identity, quotas, opt-outs' },
 ];
 
 export default function SettingsPage() {
