@@ -14,7 +14,7 @@ const SETTING_LINKS = [
   { href: '/dashboard/settings/receipt',   icon: Printer,   label: 'Receipt Templates',    desc: 'Customize thermal and A4 receipt layouts' },
   { href: '/dashboard/settings/tax-rates', icon: Percent,   label: 'Tax Rates',            desc: 'GST, VAT and other tax rates' },
   { href: '/dashboard/settings/units',           icon: Ruler,         label: 'Units of Measure',     desc: 'Piece, Kg, Litre, etc.' },
-  { href: '/dashboard/settings/communications', icon: MessageSquare, label: 'Communications',        desc: 'SMS, email & WhatsApp sender identity, quotas, opt-outs' },
+  { href: '/dashboard/settings/communications', icon: MessageSquare, label: 'Communications',        desc: 'Sender identity, quotas, opt-outs' },
 ];
 
 export default function SettingsPage() {

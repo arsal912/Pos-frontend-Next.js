@@ -25,6 +25,7 @@ import {
   Gift,
   BadgeDollarSign,
   MessageSquare,
+  Send,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -47,6 +48,7 @@ const NAV_ITEMS = [
   { href: '/dashboard/loyalty',        label: 'Loyalty',         icon: Gift },
   { href: '/dashboard/credit',         label: 'Credit',          icon: BadgeDollarSign },
   { href: '/dashboard/cash-drawer',    label: 'Cash Drawer',     icon: Vault },
+  { href: '/dashboard/communications/campaigns',  label: 'Campaigns',  icon: Send },
   { href: '/dashboard/communications/templates', label: 'Templates',  icon: MessageSquare },
   { href: '/dashboard/reports',        label: 'Reports',         icon: BarChart3 },
   { href: '/dashboard/billing',        label: 'Billing',         icon: CreditCard },
