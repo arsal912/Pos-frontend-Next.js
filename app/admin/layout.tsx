@@ -20,6 +20,7 @@ import {
   BarChart3,
   MessageSquare,
   Plug,
+  Monitor,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/auth';
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { href: '/admin/payments',         label: 'Payments',         icon: Receipt },
   { href: '/admin/modules',          label: 'Modules',          icon: Puzzle },
   { href: '/admin/payment-gateways',         label: 'Gateways',      icon: CreditCard },
+  { href: '/admin/pos-devices',             label: 'POS Devices',   icon: Monitor },
   { href: '/admin/communications',           label: 'Comms',         icon: MessageSquare },
   { href: '/admin/communications-providers', label: 'Providers',     icon: Plug },
   { href: '/admin/reports',                  label: 'Reports',       icon: BarChart3 },

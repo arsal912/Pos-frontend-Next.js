@@ -27,6 +27,7 @@ import {
   MessageSquare,
   Send,
 } from 'lucide-react';
+import { OfflineGuard } from '@/components/pos/OfflineGuard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/auth';
@@ -47,7 +48,8 @@ const NAV_ITEMS = [
   { href: '/dashboard/customers',      label: 'Customers',       icon: Users },
   { href: '/dashboard/loyalty',        label: 'Loyalty',         icon: Gift },
   { href: '/dashboard/credit',         label: 'Credit',          icon: BadgeDollarSign },
-  { href: '/dashboard/cash-drawer',    label: 'Cash Drawer',     icon: Vault },
+  { href: '/dashboard/cash-drawer',         label: 'Cash Drawer',  icon: Vault },
+  { href: '/dashboard/pos/sync-conflicts',  label: 'Sync Conflicts', icon: AlertTriangle },
   { href: '/dashboard/communications/campaigns',  label: 'Campaigns',  icon: Send },
   { href: '/dashboard/communications/templates', label: 'Templates',  icon: MessageSquare },
   { href: '/dashboard/reports',        label: 'Reports',         icon: BarChart3 },
@@ -164,7 +166,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       <main className="flex-1 overflow-x-hidden">
-        <div className="p-6 md:p-10 max-w-7xl mx-auto">{children}</div>
+        <div className="p-6 md:p-10 max-w-7xl mx-auto">
+          <OfflineGuard>{children}</OfflineGuard>
+        </div>
       </main>
     </div>
   );

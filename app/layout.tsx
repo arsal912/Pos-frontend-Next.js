@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Plus_Jakarta_Sans, Fraunces, JetBrains_Mono } from 'next/font/google';
 import { Providers } from './providers';
 import './globals.css';
@@ -23,7 +23,21 @@ const jetbrains = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: 'POS System — Modern Point of Sale',
-  description: 'Run your business smarter with our cloud-based POS. Inventory, sales, customers — all in one place.',
+  description: 'Run your business smarter with our cloud-based POS. Works offline on tablets.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'POS System',
+  },
+  icons: {
+    icon:  [{ url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+    apple: [{ url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#6366f1',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -19,6 +19,16 @@ import { toast } from 'sonner';
 import CustomerModal from '@/components/pos/CustomerModal';
 import PaymentModal from '@/components/pos/PaymentModal';
 import ReceiptScreen from '@/components/pos/ReceiptScreen';
+import { SyncIndicator } from '@/components/pos/SyncIndicator';
+import { InstallBanner } from '@/components/pos/InstallBanner';
+import { useDeviceRegistration } from '@/hooks/useDeviceRegistration';
+import { useSwUpdate } from '@/hooks/useSwUpdate';
+import { useSyncService } from '@/hooks/useSyncService';
+import { useOfflineProducts, useOfflineCategories, lookupOfflineProductByBarcode, isStale, staleLabel } from '@/lib/offline/hooks';
+import { useOfflineCart, type OfflineCompletionResult } from '@/hooks/useOfflineCart';
+import type { OfflinePayment } from '@/lib/offline/offline-sale';
+import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useAuthStore } from '@/store/auth';
 import type { Sale, SaleItem, Product, Category, Customer, PaymentMethod, HoldSale } from '@/types';
 
 const CART_KEY = 'pos_draft_sale_id';
@@ -27,6 +37,9 @@ export default function PosPage() {
   const [sale, setSale]             = useState<Sale | null>(null);
   const [saleLoading, setSaleLoading] = useState(true);
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
+
+  // Phase 6 — offline completion state
+  const [offlineResult, setOfflineResult] = useState<OfflineCompletionResult | null>(null);
 
   const [products, setProducts]     = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -57,6 +70,27 @@ export default function PosPage() {
   const lastKeyTime   = useRef(0);
   const barcodeBuffer = useRef('');
   const SCAN_THRESHOLD = 100;
+
+  // Phase 6 — device registry + offline sync
+  const user    = useAuthStore(s => s.user);
+  const storeId = user?.store?.id;
+  const device  = useDeviceRegistration();
+  const sync    = useSyncService();
+
+  // Offline-first data — reads directly from IndexedDB, updates reactively
+  const offlineProducts   = useOfflineProducts(storeId, { search: productSearch, categoryId: activeCategory });
+  const offlineCategories = useOfflineCategories(storeId);
+
+  // Reliable connection detection (active HTTP probe, not just navigator.onLine)
+  const { isOnline }         = useConnectionStatus();
+  // Service worker update detection (edge case J)
+  const { updateAvailable, applyUpdate } = useSwUpdate();
+  const offlineCartHook = useOfflineCart();
+
+  // Determine display data: prefer IndexedDB when populated, fall back to API
+  const displayProducts   = offlineProducts != null   ? (offlineProducts   ?? []) : products;
+  const displayCategories = offlineCategories != null ? (offlineCategories ?? []) : categories;
+  const usingOfflineData  = offlineProducts != null;
 
   // ── Init ────────────────────────────────────────────────────────────────────
 
@@ -120,7 +154,13 @@ export default function PosPage() {
 
   // ── Product add ──────────────────────────────────────────────────────────────
 
-  const addProductToCart = async (product: Product, variantId?: number) => {
+  const addProductToCart = async (product: any, variantId?: number | null) => {
+    // Offline: add to local IndexedDB cart
+    if (!navigator.onLine) {
+      const { stockWarning } = offlineCartHook.addProduct(product, variantId);
+      if (stockWarning) toast.warning(`Stock warning: ${stockWarning}. Added anyway.`);
+      return;
+    }
     if (!sale) return;
     try {
       const res = await apiClient.post(`/store/pos/sales/${sale.id}/items`, {
@@ -132,11 +172,22 @@ export default function PosPage() {
   };
 
   const handleBarcodeScan = async (barcode: string) => {
+    // Try IndexedDB first (instant, works offline)
+    if (storeId) {
+      const cached = await lookupOfflineProductByBarcode(storeId, barcode);
+      if (cached) {
+        await addProductToCart(cached as any);
+        setProductSearch('');
+        return;
+      }
+    }
+    // Fallback: API (online only)
+    if (!navigator.onLine) { toast.error('Product not in cache. Connect to internet to look up new products.'); return; }
     try {
       const res = await apiClient.get('/store/products/lookup', { barcode });
       const data = res.data as any;
       if (data.product) { await addProductToCart(data.product, data.variant?.id); setProductSearch(''); }
-      else toast.error('Product not found for: ' + barcode);
+      else toast.error('Product not found: ' + barcode);
     } catch { toast.error('Product not found.'); }
   };
 
@@ -184,7 +235,14 @@ export default function PosPage() {
     } catch (err) { toast.error(getErrorMessage(err)); }
   };
 
-  const attachCustomer = async (customer: Customer) => {
+  const attachCustomer = async (customer: any) => {
+    if (!navigator.onLine) {
+      // Offline: attach to local cart (customer may come from Dexie — CachedCustomer shape)
+      offlineCartHook.setCustomer(customer);
+      setShowCustomer(false);
+      toast.success(`${customer.name} attached (offline).`);
+      return;
+    }
     if (!sale) return;
     try {
       const res = await apiClient.post(`/store/pos/sales/${sale.id}/customer`, { customer_id: customer.id });
@@ -195,7 +253,16 @@ export default function PosPage() {
   };
 
   const applyDiscount = async () => {
-    if (!sale || !discountValue) return;
+    if (!discountValue) return;
+
+    // Offline: apply to local cart
+    if (!isOnline) {
+      offlineCartHook.setDiscount(discountType, parseFloat(discountValue), discountReason);
+      setShowDiscount(false);
+      return;
+    }
+
+    if (!sale) return;
     try {
       const res = await apiClient.post(`/store/pos/sales/${sale.id}/discount`, {
         discount_amount: parseFloat(discountValue),
@@ -241,8 +308,20 @@ export default function PosPage() {
     localStorage.removeItem(CART_KEY);
   };
 
+  // Offline sale completion
+  const handleOfflinePayments = async (payments: OfflinePayment[]) => {
+    try {
+      const result = await offlineCartHook.completeSale(payments);
+      setOfflineResult(result);
+      setShowPayment(false);
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Offline sale failed. Check your data.');
+    }
+  };
+
   const startNewSale = async () => {
     setCompletedSale(null);
+    setOfflineResult(null);
     setSale(null);
     setLoyaltyEarnedLastSale(null);
     setSaleLoading(true);
@@ -286,21 +365,51 @@ export default function PosPage() {
     return () => document.removeEventListener('keydown', h);
   }, [sale]);
 
-  // ── Computed ─────────────────────────────────────────────────────────────────
+  // ── Computed — switch between online (server) cart and offline (IndexedDB) cart ──
 
-  const items     = sale?.items ?? [];
-  const customer  = sale?.customer ?? null;
-  const total     = Number(sale?.total ?? 0);
-  const itemCount = items.reduce((s, i) => s + Number(i.quantity), 0);
+  const offlineMode = !isOnline;
+  const oc          = offlineCartHook.cart; // offline cart shorthand
+
+  // Items and totals — from offline cart when offline, server cart when online
+  const items     = offlineMode ? (oc?.items ?? []) as any[] : (sale?.items ?? []);
+  const customer  = offlineMode ? (oc?.customer ?? null)     : (sale?.customer ?? null);
+  const total     = offlineMode ? (oc?.total  ?? 0)          : Number(sale?.total  ?? 0);
+  const itemCount = offlineMode
+    ? items.reduce((s: number, i: any) => s + Number(i.quantity), 0)
+    : items.reduce((s: number, i: any) => s + Number(i.quantity), 0);
 
   if (saleLoading) return <div className="h-full flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
   return (
     <div className="relative h-[calc(100vh-2rem)] flex gap-4 overflow-hidden -m-6 md:-m-10 p-3">
 
+      {/* ── SW update banner (edge case J) ────────────────────────────────── */}
+      {updateAvailable && (
+        <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between gap-3 bg-primary text-primary-foreground px-4 py-2 text-sm">
+          <span>A new version of the POS is available.</span>
+          <button onClick={applyUpdate} className="font-semibold underline hover:no-underline flex-shrink-0">
+            Update now
+          </button>
+        </div>
+      )}
+
+      {/* ── Initial sync blocking overlay ──────────────────────────────────── */}
+      {sync.isInitialSync && (
+        <div className="absolute inset-0 z-50 bg-background/95 flex flex-col items-center justify-center gap-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <div className="text-center">
+            <p className="font-display font-bold text-xl">Setting up offline mode</p>
+            <p className="text-muted-foreground text-sm mt-1">{sync.progress ?? 'Downloading data…'}</p>
+          </div>
+          <p className="text-xs text-muted-foreground">This only happens once. Future loads are instant.</p>
+        </div>
+      )}
+
       {/* ── LEFT: Product picker ─────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 gap-3 overflow-hidden">
-        <div className="relative">
+        {/* Sync indicator + search row */}
+        <div className="flex items-center gap-2">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input ref={searchRef} value={productSearch}
             onChange={e => { setProductSearch(e.target.value); setProductPage(1); }}
@@ -313,47 +422,61 @@ export default function PosPage() {
             </button>
           )}
         </div>
+        {/* Sync status pill */}
+        <SyncIndicator sync={sync} />
+        </div>{/* end flex items-center gap-2 */}
 
+        {/* Category filter — from offline cache when available */}
         <div className="flex gap-2 overflow-x-auto pb-1 flex-shrink-0">
-          {[{ id: null, name: 'All' }, ...categories].map(c => (
-            <button key={c.id ?? 'all'} onClick={() => { setActiveCategory(c.id); setProductPage(1); }}
+          {[{ id: null, name: 'All' } as any, ...displayCategories].map((c: any) => (
+            <button key={c.id ?? 'all'} onClick={() => { setActiveCategory(c.id ?? null); setProductPage(1); }}
               className={cn('px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap flex-shrink-0 transition-colors',
-                activeCategory === c.id ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80')}>
+                activeCategory === (c.id ?? null) ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80')}>
               {c.name}
             </button>
           ))}
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {loadingProducts ? (
+          {/* Show spinner only when using API (not offline cache) and loading */}
+          {!usingOfflineData && loadingProducts ? (
             <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-          ) : products.length === 0 ? (
-            <div className="text-center py-12"><Package className="h-10 w-10 text-muted-foreground mx-auto mb-3" /><p className="text-muted-foreground">No products</p></div>
+          ) : displayProducts.length === 0 ? (
+            <div className="text-center py-12"><Package className="h-10 w-10 text-muted-foreground mx-auto mb-3" /><p className="text-muted-foreground">No products{productSearch ? ` matching "${productSearch}"` : ''}</p></div>
           ) : (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pb-3">
-                {products.map((p, i) => {
-                  const inStock = (p.total_stock ?? 0) > 0 || !p.track_stock || p.allow_negative_stock;
+                {displayProducts.map((p: any, i: number) => {
+                  const stock   = p.current_stock ?? p.total_stock ?? 0;
+                  const inStock = stock > 0 || !p.track_stock || !p.tracks_stock || p.allow_negative_stock;
+                  const stale   = p.cached_at && isStale(p.cached_at) && !isOnline;
+                  const price   = p.selling_price ?? p.price ?? 0;
                   return (
-                    <motion.button key={p.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
+                    <motion.button key={p.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: Math.min(i * 0.02, 0.3) }}
                       onClick={() => inStock ? addProductToCart(p) : toast.warning('Out of stock')}
                       className={cn('text-left p-3 rounded-xl border bg-card hover:shadow-md transition-all active:scale-95 relative',
                         !inStock && 'opacity-50 cursor-not-allowed')}>
                       {!inStock && <span className="absolute top-1.5 right-1.5 text-[9px] bg-destructive text-white px-1 py-0.5 rounded">Out</span>}
+                      {stale && <span className="absolute top-1.5 left-1.5 text-[9px] bg-amber-400 text-amber-900 px-1 py-0.5 rounded" title={`Data from ${staleLabel(p.cached_at)}`}>stale</span>}
                       <div className="aspect-square rounded-lg bg-muted mb-2 overflow-hidden">
-                        {p.primary_image ? (
+                        {p.primary_image?.path ? (
                           <img src={`/api/backend/store/files/${p.primary_image.path}`} alt={p.name} className="w-full h-full object-cover" />
+                        ) : p.image_url ? (
+                          <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center"><Package className="h-6 w-6 text-muted-foreground" /></div>
                         )}
                       </div>
                       <p className="font-medium text-sm leading-tight line-clamp-2">{p.name}</p>
-                      <p className="text-primary font-bold text-sm mt-1">{Number(p.selling_price).toFixed(2)}</p>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-primary font-bold text-sm">{Number(price).toFixed(2)}</p>
+                        {p.tracks_stock && <span className={cn('text-[10px] font-mono', stock <= 0 ? 'text-destructive' : stock <= 5 ? 'text-amber-500' : 'text-muted-foreground')}>{stock}</span>}
+                      </div>
                     </motion.button>
                   );
                 })}
               </div>
-              {productMeta && productMeta.last_page > 1 && (
+              {!usingOfflineData && productMeta && productMeta.last_page > 1 && (
                 <div className="flex justify-center gap-2 pb-2">
                   <Button variant="outline" size="sm" disabled={productPage <= 1} onClick={() => setProductPage(p => p - 1)}>Prev</Button>
                   <span className="text-sm flex items-center px-2">{productPage}/{productMeta.last_page}</span>
@@ -410,8 +533,11 @@ export default function PosPage() {
               <ShoppingCart className="h-10 w-10 mb-2 opacity-20" />
               <p className="text-sm">Cart is empty</p>
             </div>
-          ) : items.map(item => (
-            <div key={item.id} className="rounded-xl border bg-background p-2.5">
+          ) : items.map((item: any) => {
+            // Support both server items (item.id) and offline items (item.local_id)
+            const itemKey = item.local_id ?? item.id;
+            return (
+            <div key={itemKey} className="rounded-xl border bg-background p-2.5">
               <div className="flex items-start justify-between gap-1 mb-1.5">
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm leading-tight truncate">{item.product_name}</p>
@@ -421,18 +547,18 @@ export default function PosPage() {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1">
-                  <button onClick={() => updateItemQty(item, -1)} className="h-7 w-7 rounded-lg border flex items-center justify-center hover:bg-muted">
+                  <button onClick={() => offlineMode ? offlineCartHook.updateQty(itemKey, -1) : updateItemQty(item, -1)} className="h-7 w-7 rounded-lg border flex items-center justify-center hover:bg-muted">
                     <Minus className="h-3.5 w-3.5" />
                   </button>
                   <span className="w-10 text-center font-mono text-sm">{Number(item.quantity) % 1 === 0 ? Number(item.quantity) : Number(item.quantity).toFixed(2)}</span>
-                  <button onClick={() => updateItemQty(item, 1)} className="h-7 w-7 rounded-lg border flex items-center justify-center hover:bg-muted">
+                  <button onClick={() => offlineMode ? offlineCartHook.updateQty(itemKey, 1) : updateItemQty(item, 1)} className="h-7 w-7 rounded-lg border flex items-center justify-center hover:bg-muted">
                     <Plus className="h-3.5 w-3.5" />
                   </button>
                 </div>
                 <div className="flex gap-1">
-                  <button onClick={() => setEditItem(editItem?.id === item.id ? null : { ...item })}
-                    className="h-7 px-2 rounded-lg border text-xs hover:bg-muted">Edit</button>
-                  <button onClick={() => removeItem(item)} className="h-7 w-7 rounded-lg border flex items-center justify-center hover:bg-destructive/10 text-destructive">
+                  {!offlineMode && <button onClick={() => setEditItem(editItem?.id === item.id ? null : { ...item })}
+                    className="h-7 px-2 rounded-lg border text-xs hover:bg-muted">Edit</button>}
+                  <button onClick={() => offlineMode ? offlineCartHook.removeItem(itemKey) : removeItem(item)} className="h-7 w-7 rounded-lg border flex items-center justify-center hover:bg-destructive/10 text-destructive">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -455,7 +581,8 @@ export default function PosPage() {
                 )}
               </AnimatePresence>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Discount bar */}
@@ -477,11 +604,12 @@ export default function PosPage() {
           )}
         </AnimatePresence>
 
-        {/* Totals */}
+        {/* Totals — sources differ between online (sale) and offline (oc) */}
         <div className="border-t px-4 py-3 space-y-1">
-          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span className="font-mono">{Number(sale?.subtotal ?? 0).toFixed(2)}</span></div>
-          {Number(sale?.tax_amount ?? 0) > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Tax</span><span className="font-mono">{Number(sale?.tax_amount ?? 0).toFixed(2)}</span></div>}
-          {Number(sale?.discount_amount ?? 0) > 0 && <div className="flex justify-between text-sm text-success"><span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5" />Discount</span><span className="font-mono">-{Number(sale?.discount_amount ?? 0).toFixed(2)}</span></div>}
+          {offlineMode && <div className="text-[10px] text-amber-600 flex items-center gap-1 mb-1">⚡ Offline mode</div>}
+          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span className="font-mono">{Number(offlineMode ? oc?.subtotal : sale?.subtotal ?? 0).toFixed(2)}</span></div>
+          {Number(offlineMode ? oc?.tax_amount : sale?.tax_amount ?? 0) > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Tax</span><span className="font-mono">{Number(offlineMode ? oc?.tax_amount : sale?.tax_amount ?? 0).toFixed(2)}</span></div>}
+          {Number(offlineMode ? oc?.discount_amount : sale?.discount_amount ?? 0) > 0 && <div className="flex justify-between text-sm text-success"><span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5" />Discount</span><span className="font-mono">-{Number(offlineMode ? oc?.discount_amount : sale?.discount_amount ?? 0).toFixed(2)}</span></div>}
           <div className="flex justify-between font-bold text-xl pt-1.5 border-t"><span>Total</span><span className="font-mono text-primary">{total.toFixed(2)}</span></div>
         </div>
 
@@ -557,17 +685,28 @@ export default function PosPage() {
         {showCustomer && <CustomerModal onSelect={attachCustomer} onClose={() => setShowCustomer(false)} />}
       </AnimatePresence>
 
+      {/* Payment modal — online or offline paths */}
       <AnimatePresence>
-        {showPayment && sale && <PaymentModal sale={sale} onPay={handlePayments} onClose={() => setShowPayment(false)} />}
+        {showPayment && !isOnline && offlineCartHook.cart && offlineCartHook.cart.items.length > 0 && (
+          <PaymentModal
+            isOffline
+            offlineTotal={offlineCartHook.cart.total}
+            onPayOffline={handleOfflinePayments}
+            onClose={() => setShowPayment(false)}
+          />
+        )}
+        {showPayment && isOnline && sale && (
+          <PaymentModal sale={sale} onPay={handlePayments} onClose={() => setShowPayment(false)} />
+        )}
       </AnimatePresence>
 
+      {/* Receipt — online or offline */}
       <AnimatePresence>
         {completedSale && (
-          <ReceiptScreen
-            sale={completedSale}
-            onNewSale={startNewSale}
-            loyaltyEarned={loyaltyEarnedLastSale}
-          />
+          <ReceiptScreen sale={completedSale} onNewSale={startNewSale} loyaltyEarned={loyaltyEarnedLastSale} />
+        )}
+        {offlineResult && offlineCartHook.cart && (
+          <ReceiptScreen offlineResult={offlineResult} offlineCart={offlineCartHook.cart} onNewSale={startNewSale} />
         )}
       </AnimatePresence>
 
@@ -599,8 +738,12 @@ export default function PosPage() {
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={()=>setShowRedeem(false)} className="flex-1">Cancel</Button>
-                  <Button onClick={handleRedeemPoints} disabled={redeemingPoints||!redeemPoints} className="flex-1 gap-2">
-                    {redeemingPoints&&<Loader2 className="h-4 w-4 animate-spin"/>}Apply Discount
+                  <Button onClick={handleRedeemPoints}
+                    disabled={redeemingPoints || !redeemPoints || !isOnline}
+                    className="flex-1 gap-2"
+                    title={!isOnline ? 'Loyalty redemption requires internet — use "Loyalty Points" payment method instead' : undefined}>
+                    {redeemingPoints && <Loader2 className="h-4 w-4 animate-spin"/>}
+                    {!isOnline ? 'Requires internet' : 'Apply Discount'}
                   </Button>
                 </div>
               </Card>
@@ -608,6 +751,9 @@ export default function PosPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* PWA install prompt — shown once on first visit via Chrome/Edge */}
+      <InstallBanner />
     </div>
   );
 }
