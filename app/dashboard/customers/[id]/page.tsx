@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Loader2, ArrowLeft, Phone, Mail, MapPin, Building2, Calendar,
   Gift, CreditCard, FileText, MessageCircle, Star, Plus, X,
@@ -38,8 +38,8 @@ function fmtMoney(n:number|null|undefined) {
   return n != null ? Number(n).toFixed(2) : '—';
 }
 
-export default function CustomerDetailPage({params}:{params:Promise<{id:string}>}) {
-  const {id} = use(params);
+export default function CustomerDetailPage({params}:{params:{id:string}}) {
+  const {id} = params;
   const [customer, setCustomer] = useState<Customer|null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('overview');

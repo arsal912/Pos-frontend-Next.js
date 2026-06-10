@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, Loader2, TrendingUp, Users, Package, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -47,8 +47,8 @@ const fmtDate = (d: string) => {
   return `${dt.getMonth() + 1}/${dt.getDate()}`;
 };
 
-export default function StoreAnalyticsPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function StoreAnalyticsPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);

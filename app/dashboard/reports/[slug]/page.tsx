@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { ArrowLeft, Loader2, RefreshCw, AlertCircle, Calendar, X } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -28,8 +28,8 @@ function useLocalStorageValue<T>(key: string, initial: T): [T, (v: T) => void] {
   return [state, set];
 }
 
-export default function ReportViewerPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = use(params);
+export default function ReportViewerPage({ params }: { params: { slug: string } }) {
+  const { slug } = params;
 
   const [schema, setSchema] = useState<ReportSchema | null>(null);
   const [filters, setFilters] = useState<Record<string, any>>({});

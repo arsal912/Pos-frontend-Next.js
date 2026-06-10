@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2, Printer, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -11,8 +11,8 @@ import { apiClient, getErrorMessage } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Product } from '@/types';
 
-export default function PrintBarcodePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function PrintBarcodePage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [qty, setQty] = useState(10);
