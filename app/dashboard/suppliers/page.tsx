@@ -30,7 +30,7 @@ export default function SuppliersPage() {
     setLoading(true);
     try {
       const res = await apiClient.get('/store/suppliers', { search: search || undefined, page, per_page: 20 });
-      setSuppliersgetItems((res as any));
+      setSuppliers(getItems(res));
       setMeta((res as any).meta?.pagination ?? null);
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setLoading(false); }

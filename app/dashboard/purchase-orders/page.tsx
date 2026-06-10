@@ -31,7 +31,7 @@ export default function PurchaseOrdersPage() {
     setLoading(true);
     try {
       const res = await apiClient.get('/store/purchase-orders', { status: status || undefined, page, per_page: 20 });
-      setOrdersgetItems((res as any));
+      setOrders(getItems(res));
       setMeta((res as any).meta?.pagination ?? null);
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setLoading(false); }
@@ -128,14 +128,14 @@ function QuickCreatePO({ onClose }: { onClose: () => void }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    apiClient.get('/store/suppliers', { per_page: 100 }).thengetItems(r => setSuppliers((r as any))).catch(() => {});
+    apiClient.get('/store/suppliers', { per_page: 100 }).then(r => setSuppliers(getItems(r))).catch(() => {});
   }, []);
 
   const searchProducts = useCallback(async (q: string) => {
     if (!q.trim()) { setProducts([]); return; }
     try {
       const r = await apiClient.get('/store/products', { search: q, per_page: 8 });
-      setProductsgetItems((r as any));
+      setProducts(getItems(r));
     } catch { setProducts([]); }
   }, []);
 

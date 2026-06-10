@@ -39,7 +39,7 @@ export default function LoyaltyPage() {
   const loadTransactions = useCallback(async () => {
     try {
       const res = await apiClient.get('/store/loyalty/transactions', { per_page: 30 });
-      setTransactionsgetItems((res as any));
+      setTransactions(getItems(res));
     } catch { setTransactions([]); }
   }, []);
 

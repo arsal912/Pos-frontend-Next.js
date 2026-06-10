@@ -55,7 +55,7 @@ export default function CustomersPage() {
         }),
         apiClient.get('/store/customer-groups'),
       ]);
-      setCustomersgetItems((cr as any));
+      setCustomers(getItems(cr));
       setMeta((cr as any).meta?.pagination ?? null);
       setGroups((gr.data as any)?.groups ?? []);
     } catch (err) { toast.error(getErrorMessage(err)); }

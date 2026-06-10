@@ -23,7 +23,7 @@ export default function StockTransfersPage() {
     setLoading(true);
     try {
       const res = await apiClient.get('/store/stock-transfers', { per_page: 20 });
-      setTransfersgetItems((res as any));
+      setTransfers(getItems(res));
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setLoading(false); }
   }, []);
@@ -93,7 +93,7 @@ function QuickCreateTransfer({ onClose }: { onClose: () => void }) {
 
   const searchProducts = useCallback(async (q: string) => {
     if (!q.trim()) { setProducts([]); return; }
-    try { const r = await apiClient.get('/store/products', { search: q, per_page: 8 }); setProductsgetItems((r as any)); }
+    try { const r = await apiClient.get('/store/products', { search: q, per_page: 8 }); setProducts(getItems(r)); }
     catch { setProducts([]); }
   }, []);
 

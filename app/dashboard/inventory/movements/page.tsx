@@ -42,7 +42,7 @@ export default function MovementsPage() {
         date_from: dateFrom || undefined, date_to: dateTo || undefined,
         page, per_page: 30,
       });
-      setMovementsgetItems((res as any));
+      setMovements(getItems(res));
       setMeta((res as any).meta?.pagination ?? null);
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setLoading(false); }

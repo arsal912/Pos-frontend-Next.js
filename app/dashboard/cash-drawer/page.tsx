@@ -36,7 +36,7 @@ export default function CashDrawerPage() {
         apiClient.get('/store/pos/drawer/history', { per_page: 10 }),
       ]);
       setCurrent(curRes.data as any);
-      setHistorygetItems(((histRes as any)));
+      setHistory(getItems(histRes));
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setLoading(false); }
   }, []);

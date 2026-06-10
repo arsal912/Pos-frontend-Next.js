@@ -39,7 +39,7 @@ export default function StockAdjustPage() {
     setSearching(true);
     try {
       const res = await apiClient.get('/store/products', { search: q, per_page: 8, is_active: 'true' });
-      setSearchResultsgetItems((res as any));
+      setSearchResults(getItems(res));
     } catch { setSearchResults([]); }
     finally { setSearching(false); }
   }, []);

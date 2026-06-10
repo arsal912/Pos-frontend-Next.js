@@ -24,7 +24,7 @@ export default function GrnsPage() {
     setLoading(true);
     try {
       const res = await apiClient.get('/store/grns', { page, per_page: 20 });
-      setGrnsgetItems((res as any));
+      setGrns(getItems(res));
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setLoading(false); }
   }, [page]);
@@ -83,12 +83,12 @@ function QuickCreateGrn({ defaultPoId, onClose }: { defaultPoId?: string; onClos
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    apiClient.get('/store/suppliers', { per_page: 100 }).thengetItems(r => setSuppliers((r as any))).catch(() => {});
+    apiClient.get('/store/suppliers', { per_page: 100 }).then(r => setSuppliers(getItems(r))).catch(() => {});
   }, []);
 
   const searchProducts = useCallback(async (q: string) => {
     if (!q.trim()) { setProducts([]); return; }
-    try { const r = await apiClient.get('/store/products', { search: q, per_page: 8 }); setProductsgetItems((r as any)); }
+    try { const r = await apiClient.get('/store/products', { search: q, per_page: 8 }); setProducts(getItems(r)); }
     catch { setProducts([]); }
   }, []);
 

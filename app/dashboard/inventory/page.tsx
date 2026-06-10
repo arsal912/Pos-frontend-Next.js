@@ -49,7 +49,7 @@ export default function InventoryPage() {
         }),
         apiClient.get('/store/categories'),
       ]);
-      setItemsgetItems((invRes as any));
+      setItems(getItems(invRes));
       setMeta((invRes as any).meta?.pagination ?? null);
       setCategories((catRes.data as any)?.categories ?? []);
     } catch (err) { toast.error(getErrorMessage(err)); }
