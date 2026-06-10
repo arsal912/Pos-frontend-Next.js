@@ -13,7 +13,7 @@ export default function EditCampaignPage() {
   const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
-    apiClient.get(`/campaigns/${id}`)
+    apiClient.get(`/store/campaigns/${id}`)
       .then(res => {
         const c = (res.data as any)?.campaign ?? res.data;
         setCampaign({

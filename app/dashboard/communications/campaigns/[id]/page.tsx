@@ -32,7 +32,7 @@ export default function CampaignDetailPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get(`/campaigns/${id}/stats`);
+      const res = await apiClient.get(`/store/campaigns/${id}/stats`);
       setData(res.data);
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setLoading(false); }
@@ -44,7 +44,7 @@ export default function CampaignDetailPage() {
     if (!confirm('Launch this campaign now?')) return;
     setActing(true);
     try {
-      await apiClient.post(`/campaigns/${id}/launch`);
+      await apiClient.post(`/store/campaigns/${id}/launch`);
       toast.success('Campaign queued.');
       load();
     } catch (err) { toast.error(getErrorMessage(err)); }
@@ -55,7 +55,7 @@ export default function CampaignDetailPage() {
     if (!confirm('Cancel this campaign?')) return;
     setActing(true);
     try {
-      await apiClient.post(`/campaigns/${id}/cancel`);
+      await apiClient.post(`/store/campaigns/${id}/cancel`);
       toast.success('Campaign cancelled.');
       load();
     } catch (err) { toast.error(getErrorMessage(err)); }

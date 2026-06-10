@@ -72,9 +72,9 @@ export default function CampaignForm({ initial }: { initial?: Campaign }) {
   // Load templates, groups, segments
   useEffect(() => {
     Promise.all([
-      apiClient.get('/message-templates', { channel: form.channel, active_only: true, per_page: 100 }),
-      apiClient.get('/customer-groups'),
-      apiClient.get('/customer-segments'),
+      apiClient.get('/store/message-templates', { channel: form.channel, active_only: true, per_page: 100 }),
+      apiClient.get('/store/customer-groups'),
+      apiClient.get('/store/customer-segments'),
     ]).then(([tRes, gRes, sRes]) => {
       setTemplates(Array.isArray(tRes.data) ? (tRes.data as MessageTemplate[]) : []);
       setGroups((gRes.data as any)?.groups ?? []);
@@ -104,7 +104,7 @@ export default function CampaignForm({ initial }: { initial?: Campaign }) {
       if (!form.channel) return;
       setEstimating(true);
       try {
-        const res = await apiClient.post('/campaigns/estimate-audience', {
+        const res = await apiClient.post('/store/campaigns/estimate-audience', {
           channel:     form.channel,
           type:        form.type,
           target_type: form.target_type,
@@ -135,8 +135,8 @@ export default function CampaignForm({ initial }: { initial?: Campaign }) {
     setSaving(true);
     try {
       const res = isEdit
-        ? await apiClient.put(`/campaigns/${initial!.id}`, buildPayload())
-        : await apiClient.post('/campaigns', buildPayload());
+        ? await apiClient.put(`/store/campaigns/${initial!.id}`, buildPayload())
+        : await apiClient.post('/store/campaigns', buildPayload());
       toast.success(isEdit ? 'Campaign updated.' : 'Campaign saved as draft.');
       router.push('/dashboard/communications/campaigns');
     } catch (err) { toast.error(getErrorMessage(err)); }
@@ -148,10 +148,10 @@ export default function CampaignForm({ initial }: { initial?: Campaign }) {
     try {
       // Save first (or update), then launch
       const saveRes = isEdit
-        ? await apiClient.put(`/campaigns/${initial!.id}`, buildPayload())
-        : await apiClient.post('/campaigns', buildPayload());
+        ? await apiClient.put(`/store/campaigns/${initial!.id}`, buildPayload())
+        : await apiClient.post('/store/campaigns', buildPayload());
       const campaignId = (saveRes.data as any)?.id ?? initial?.id;
-      await apiClient.post(`/campaigns/${campaignId}/launch`);
+      await apiClient.post(`/store/campaigns/${campaignId}/launch`);
       toast.success('Campaign launched! Messages are being queued.');
       router.push('/dashboard/communications/campaigns');
     } catch (err) { toast.error(getErrorMessage(err)); }

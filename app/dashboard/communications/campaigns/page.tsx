@@ -54,7 +54,7 @@ export default function CampaignsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get('/campaigns', {
+      const res = await apiClient.get('/store/campaigns', {
         search:   search   || undefined,
         status:   statusFilter || undefined,
         per_page: 50,
@@ -70,7 +70,7 @@ export default function CampaignsPage() {
     if (!confirm(`Launch "${c.name}" now? This will queue messages to all targeted recipients.`)) return;
     setActing(c.id);
     try {
-      await apiClient.post(`/campaigns/${c.id}/launch`);
+      await apiClient.post(`/store/campaigns/${c.id}/launch`);
       toast.success('Campaign queued for dispatch.');
       load();
     } catch (err) { toast.error(getErrorMessage(err)); }
@@ -81,7 +81,7 @@ export default function CampaignsPage() {
     if (!confirm(`Cancel "${c.name}"? This cannot be undone.`)) return;
     setActing(c.id);
     try {
-      await apiClient.post(`/campaigns/${c.id}/cancel`);
+      await apiClient.post(`/store/campaigns/${c.id}/cancel`);
       toast.success('Campaign cancelled.');
       load();
     } catch (err) { toast.error(getErrorMessage(err)); }

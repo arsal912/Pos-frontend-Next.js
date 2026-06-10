@@ -99,8 +99,8 @@ function TemplateModal({
       };
 
       const res = isNew
-        ? await apiClient.post('/message-templates', payload)
-        : await apiClient.put(`/message-templates/${template!.id}`, payload);
+        ? await apiClient.post('/store/message-templates', payload)
+        : await apiClient.put(`/store/message-templates/${template!.id}`, payload);
 
       toast.success(isNew ? 'Template created.' : 'Template updated.');
       onSaved(res.data as any as MessageTemplate);
@@ -229,7 +229,7 @@ export default function TemplatesPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get('/message-templates', {
+      const res = await apiClient.get('/store/message-templates', {
         channel:  channelFilter || undefined,
         type:     typeFilter    || undefined,
         search:   search        || undefined,
@@ -259,7 +259,7 @@ export default function TemplatesPage() {
     if (!confirm(`Delete "${t.name}"? This cannot be undone.`)) return;
     setDeleting(t.id);
     try {
-      await apiClient.delete(`/message-templates/${t.id}`);
+      await apiClient.delete(`/store/message-templates/${t.id}`);
       setTemplates(prev => prev.filter(p => p.id !== t.id));
       toast.success('Template deleted.');
     } catch (err) { toast.error(getErrorMessage(err)); }
@@ -269,7 +269,7 @@ export default function TemplatesPage() {
   const handleDuplicate = async (t: MessageTemplate) => {
     setDuping(t.id);
     try {
-      const res = await apiClient.post(`/message-templates/${t.id}/duplicate`);
+      const res = await apiClient.post(`/store/message-templates/${t.id}/duplicate`);
       setTemplates(prev => [res.data as any as MessageTemplate, ...prev]);
       toast.success('Template duplicated. You can now edit the copy.');
     } catch (err) { toast.error(getErrorMessage(err)); }
