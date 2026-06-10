@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { Plus, Loader2, ArrowRight, X as XIcon, Send, PackageCheck } from 'lucide-react';
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { apiClient, getErrorMessage } from '@/lib/api';
+import { apiClient, getItems, getErrorMessage } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Product } from '@/types';
 
@@ -23,7 +23,7 @@ export default function StockTransfersPage() {
     setLoading(true);
     try {
       const res = await apiClient.get('/store/stock-transfers', { per_page: 20 });
-      setTransfers((res as any).data?.data ?? []);
+      setTransfersgetItems((res as any));
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setLoading(false); }
   }, []);
@@ -93,7 +93,7 @@ function QuickCreateTransfer({ onClose }: { onClose: () => void }) {
 
   const searchProducts = useCallback(async (q: string) => {
     if (!q.trim()) { setProducts([]); return; }
-    try { const r = await apiClient.get('/store/products', { search: q, per_page: 8 }); setProducts((r as any).data?.data ?? []); }
+    try { const r = await apiClient.get('/store/products', { search: q, per_page: 8 }); setProductsgetItems((r as any)); }
     catch { setProducts([]); }
   }, []);
 
@@ -160,3 +160,4 @@ function QuickCreateTransfer({ onClose }: { onClose: () => void }) {
     </div>
   );
 }
+

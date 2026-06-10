@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { apiClient, getErrorMessage } from '@/lib/api';
+import { apiClient, getItems, getErrorMessage } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { CashDrawerSession } from '@/types';
@@ -36,7 +36,7 @@ export default function CashDrawerPage() {
         apiClient.get('/store/pos/drawer/history', { per_page: 10 }),
       ]);
       setCurrent(curRes.data as any);
-      setHistory(((histRes as any).data?.data ?? []));
+      setHistorygetItems(((histRes as any)));
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setLoading(false); }
   }, []);
@@ -202,3 +202,4 @@ export default function CashDrawerPage() {
     </div>
   );
 }
+

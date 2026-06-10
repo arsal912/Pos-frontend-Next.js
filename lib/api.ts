@@ -107,3 +107,16 @@ export const apiClient = {
     return data;
   },
 };
+
+/**
+ * Safely extract items from a paginated API response.
+ *
+ * Handles both response shapes:
+ *   - Flat:   { data: [...items], meta: { pagination } }   ← paginatedResponse() in ApiResponse trait
+ *   - Nested: { data: { data: [...items], ... } }           ← legacy / some controllers
+ */
+export function getItems<T = any>(res: ApiResponse<any>): T[] {
+  if (Array.isArray(res.data)) return res.data as T[];
+  if (res.data && Array.isArray((res.data as any).data)) return (res.data as any).data as T[];
+  return [];
+}

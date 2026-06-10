@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { apiClient, getErrorMessage } from '@/lib/api';
+import { apiClient, getItems, getErrorMessage } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Grn, Supplier, PurchaseOrder, Product } from '@/types';
 
@@ -24,7 +24,7 @@ export default function GrnsPage() {
     setLoading(true);
     try {
       const res = await apiClient.get('/store/grns', { page, per_page: 20 });
-      setGrns((res as any).data?.data ?? []);
+      setGrnsgetItems((res as any));
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setLoading(false); }
   }, [page]);
@@ -83,12 +83,12 @@ function QuickCreateGrn({ defaultPoId, onClose }: { defaultPoId?: string; onClos
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    apiClient.get('/store/suppliers', { per_page: 100 }).then(r => setSuppliers((r as any).data?.data ?? [])).catch(() => {});
+    apiClient.get('/store/suppliers', { per_page: 100 }).thengetItems(r => setSuppliers((r as any))).catch(() => {});
   }, []);
 
   const searchProducts = useCallback(async (q: string) => {
     if (!q.trim()) { setProducts([]); return; }
-    try { const r = await apiClient.get('/store/products', { search: q, per_page: 8 }); setProducts((r as any).data?.data ?? []); }
+    try { const r = await apiClient.get('/store/products', { search: q, per_page: 8 }); setProductsgetItems((r as any)); }
     catch { setProducts([]); }
   }, []);
 
@@ -176,3 +176,4 @@ function QuickCreateGrn({ defaultPoId, onClose }: { defaultPoId?: string; onClos
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useCallback } from 'react';
 import { ArrowLeft, Plus, Trash2, Loader2, Search } from 'lucide-react';
@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { apiClient, getErrorMessage } from '@/lib/api';
+import { apiClient, getItems, getErrorMessage } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Product } from '@/types';
 
@@ -39,7 +39,7 @@ export default function StockAdjustPage() {
     setSearching(true);
     try {
       const res = await apiClient.get('/store/products', { search: q, per_page: 8, is_active: 'true' });
-      setSearchResults((res as any).data?.data ?? []);
+      setSearchResultsgetItems((res as any));
     } catch { setSearchResults([]); }
     finally { setSearching(false); }
   }, []);
@@ -200,3 +200,4 @@ export default function StockAdjustPage() {
     </div>
   );
 }
+

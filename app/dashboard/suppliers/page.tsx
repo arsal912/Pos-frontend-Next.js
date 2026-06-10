@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { apiClient, getErrorMessage } from '@/lib/api';
+import { apiClient, getItems, getErrorMessage } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Supplier } from '@/types';
 
@@ -30,7 +30,7 @@ export default function SuppliersPage() {
     setLoading(true);
     try {
       const res = await apiClient.get('/store/suppliers', { search: search || undefined, page, per_page: 20 });
-      setSuppliers((res as any).data?.data ?? []);
+      setSuppliersgetItems((res as any));
       setMeta((res as any).meta?.pagination ?? null);
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setLoading(false); }
@@ -136,3 +136,4 @@ export default function SuppliersPage() {
     </div>
   );
 }
+

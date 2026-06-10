@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import {
   useEffect, useState, useCallback, useRef, KeyboardEvent as ReactKeyboardEvent,
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { apiClient, getErrorMessage } from '@/lib/api';
+import { apiClient, getItems, getErrorMessage } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import CustomerModal from '@/components/pos/CustomerModal';
@@ -135,7 +135,7 @@ export default function PosPage() {
         is_active: 'true',
         page: productPage, per_page: 20,
       });
-      setProducts((res as any).data?.data ?? []);
+      setProducts(getItems(res));
       setProductMeta((res as any).meta?.pagination ?? null);
     } catch { /* ignore */ }
     finally { setLoadingProducts(false); }
@@ -757,3 +757,4 @@ export default function PosPage() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
@@ -11,7 +11,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { apiClient, getErrorMessage } from '@/lib/api';
+import { apiClient, getItems, getErrorMessage } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { InventoryItem, Category } from '@/types';
@@ -49,7 +49,7 @@ export default function InventoryPage() {
         }),
         apiClient.get('/store/categories'),
       ]);
-      setItems((invRes as any).data?.data ?? []);
+      setItemsgetItems((invRes as any));
       setMeta((invRes as any).meta?.pagination ?? null);
       setCategories((catRes.data as any)?.categories ?? []);
     } catch (err) { toast.error(getErrorMessage(err)); }
@@ -191,3 +191,4 @@ export default function InventoryPage() {
     </div>
   );
 }
+

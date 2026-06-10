@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { apiClient, getErrorMessage } from '@/lib/api';
+import { apiClient, getItems, getErrorMessage } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { Product, Category, Brand } from '@/types';
@@ -57,7 +57,7 @@ export default function ProductsPage() {
         apiClient.get('/store/categories'),
         apiClient.get('/store/brands'),
       ]);
-      setProducts((pRes as any).data?.data ?? (pRes as any).data ?? []);
+      setProducts(getItems(pRes as any));
       setMeta((pRes as any).meta?.pagination ?? null);
       setCategories((cRes.data as any)?.categories ?? []);
       setBrands((bRes.data as any)?.brands ?? []);
@@ -234,3 +234,4 @@ export default function ProductsPage() {
     </div>
   );
 }
+

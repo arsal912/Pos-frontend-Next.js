@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { apiClient, getErrorMessage } from '@/lib/api';
+import { apiClient, getErrorMessage, getItems } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { Customer, LoyaltyTransaction, CreditTransaction, CustomerNote } from '@/types';
@@ -93,19 +93,19 @@ export default function CustomerDetailPage({params}:{params:{id:string}}) {
     try {
       switch (t) {
         case 'loyalty':
-          setLoyaltyTx(((await apiClient.get(`/store/customers/${id}/loyalty-history`)) as any).data?.data ?? []);
+          setLoyaltyTx(getItems(await apiClient.get(`/store/customers/${id}/loyalty-history`)));
           break;
         case 'credit':
-          setCreditTx(((await apiClient.get(`/store/customers/${id}/credit-history`)) as any).data?.data ?? []);
+          setCreditTx(getItems(await apiClient.get(`/store/customers/${id}/credit-history`)));
           break;
         case 'notes':
-          setNotes(((await apiClient.get(`/store/customers/${id}/notes`)) as any).data?.data ?? []);
+          setNotes(getItems(await apiClient.get(`/store/customers/${id}/notes`)));
           break;
         case 'purchases':
           setPurchases(((await apiClient.get(`/store/customers/${id}/purchases`)) as any).data?.sales ?? []);
           break;
         case 'communications':
-          setCommunications(((await apiClient.get(`/store/customers/${id}/communications`)) as any).data?.data ?? []);
+          setCommunications(getItems(await apiClient.get(`/store/customers/${id}/communications`)));
           break;
       }
     } catch { /* ignore tab load errors */ }

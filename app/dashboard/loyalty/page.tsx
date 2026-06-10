@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { Loader2, Gift, TrendingUp, TrendingDown, Star, Settings2 } from 'lucide-react';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { apiClient, getErrorMessage } from '@/lib/api';
+import { apiClient, getItems, getErrorMessage } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { LoyaltySettings, LoyaltyTransaction } from '@/types';
@@ -39,7 +39,7 @@ export default function LoyaltyPage() {
   const loadTransactions = useCallback(async () => {
     try {
       const res = await apiClient.get('/store/loyalty/transactions', { per_page: 30 });
-      setTransactions((res as any).data?.data ?? []);
+      setTransactionsgetItems((res as any));
     } catch { setTransactions([]); }
   }, []);
 
@@ -170,3 +170,4 @@ export default function LoyaltyPage() {
     </div>
   );
 }
+

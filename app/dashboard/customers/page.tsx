@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { apiClient, getErrorMessage } from '@/lib/api';
+import { apiClient, getItems, getErrorMessage } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { Customer, CustomerGroup } from '@/types';
@@ -55,7 +55,7 @@ export default function CustomersPage() {
         }),
         apiClient.get('/store/customer-groups'),
       ]);
-      setCustomers((cr as any).data?.data ?? []);
+      setCustomersgetItems((cr as any));
       setMeta((cr as any).meta?.pagination ?? null);
       setGroups((gr.data as any)?.groups ?? []);
     } catch (err) { toast.error(getErrorMessage(err)); }
@@ -271,3 +271,4 @@ export default function CustomersPage() {
     </div>
   );
 }
+

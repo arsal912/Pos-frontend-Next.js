@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { apiClient, getErrorMessage } from '@/lib/api';
+import { apiClient, getItems, getErrorMessage } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { StockMovement } from '@/types';
@@ -42,7 +42,7 @@ export default function MovementsPage() {
         date_from: dateFrom || undefined, date_to: dateTo || undefined,
         page, per_page: 30,
       });
-      setMovements((res as any).data?.data ?? []);
+      setMovementsgetItems((res as any));
       setMeta((res as any).meta?.pagination ?? null);
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setLoading(false); }
@@ -128,3 +128,4 @@ export default function MovementsPage() {
     </div>
   );
 }
+
