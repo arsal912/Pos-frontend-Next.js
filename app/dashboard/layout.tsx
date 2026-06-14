@@ -108,7 +108,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Link>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto sidebar-scroll">
           {NAV_ITEMS.map((item) => {
             const isActive = item.exact ? pathname === item.href : pathname?.startsWith(item.href);
             const Icon = item.icon;
