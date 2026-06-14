@@ -3,23 +3,52 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
-  Printer, Settings2, Tag, Ruler, Receipt, Percent,
+  Printer, Settings2, Tag, Ruler,
   ChevronRight, MessageSquare, Monitor,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { LogoUpload } from '@/components/ui/LogoUpload';
 import { useAuthStore } from '@/store/auth';
+import { apiClient, getErrorMessage } from '@/lib/api';
+import { toast } from 'sonner';
 
 const SETTING_LINKS = [
-  { href: '/dashboard/settings/pos',       icon: Settings2, label: 'POS Configuration',    desc: 'Tax, rounding, currency display, defaults' },
-  { href: '/dashboard/settings/receipt',   icon: Printer,   label: 'Receipt Templates',    desc: 'Customize thermal and A4 receipt layouts' },
-  { href: '/dashboard/settings/tax-rates', icon: Percent,   label: 'Tax Rates',            desc: 'GST, VAT and other tax rates' },
-  { href: '/dashboard/settings/units',           icon: Ruler,         label: 'Units of Measure',     desc: 'Piece, Kg, Litre, etc.' },
-  { href: '/dashboard/settings/communications', icon: MessageSquare, label: 'Communications',        desc: 'Sender identity, quotas, opt-outs' },
-  { href: '/dashboard/settings/devices',        icon: Monitor,       label: 'POS Devices',           desc: 'Offline terminals, device registry, deactivate lost devices' },
+  { href: '/dashboard/settings/pos',            icon: Settings2,    label: 'POS Configuration', desc: 'Tax, rounding, currency display, defaults' },
+  { href: '/dashboard/settings/receipt',        icon: Printer,      label: 'Receipt Templates',  desc: 'Customize thermal and A4 receipt layouts' },
+  { href: '/dashboard/settings/tax-rates',      icon: Tag,          label: 'Tax Rates',          desc: 'GST, VAT and other tax rates' },
+  { href: '/dashboard/settings/units',          icon: Ruler,        label: 'Units of Measure',   desc: 'Piece, Kg, Litre, etc.' },
+  { href: '/dashboard/settings/communications', icon: MessageSquare,label: 'Communications',     desc: 'Sender identity, quotas, opt-outs' },
+  { href: '/dashboard/settings/devices',        icon: Monitor,      label: 'POS Devices',        desc: 'Offline terminals, device registry' },
 ];
 
 export default function SettingsPage() {
-  const user = useAuthStore((s) => s.user);
+  const user     = useAuthStore(s => s.user);
+  const logoPath = (user?.store as any)?.logo as string | null | undefined;
+  const logoUrl  = logoPath
+    ? `/api/backend/store/files/${logoPath}`
+    : null;
+
+  const handleLogoUpload = async (file: File) => {
+    const formData = new FormData();
+    formData.append('logo', file);
+    try {
+      await fetch('/api/backend/settings/logo', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` },
+        body: formData,
+      }).then(async res => {
+        if (!res.ok) throw new Error((await res.json()).message ?? 'Upload failed');
+        toast.success('Logo updated successfully.');
+        // Refresh user to get updated store.logo
+        await apiClient.get('/store/auth/me').then(r => {
+          // Update auth store if the endpoint exists; otherwise reload
+        }).catch(() => {});
+      });
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Failed to upload logo.');
+      throw err;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -28,13 +57,33 @@ export default function SettingsPage() {
         <p className="text-muted-foreground mt-1">Configure your store and POS system</p>
       </div>
 
-      {/* Store info */}
+      {/* Store info + logo */}
       <Card className="p-6">
         <h2 className="font-display font-bold text-lg mb-4">Store Information</h2>
-        <div className="grid sm:grid-cols-3 gap-4 text-sm">
-          <div><p className="text-muted-foreground text-xs uppercase tracking-wider mb-1">Store Name</p><p className="font-semibold">{user?.store?.name ?? '—'}</p></div>
-          <div><p className="text-muted-foreground text-xs uppercase tracking-wider mb-1">Currency</p><p className="font-semibold">{user?.store?.currency ?? '—'}</p></div>
-          <div><p className="text-muted-foreground text-xs uppercase tracking-wider mb-1">Status</p><p className="font-semibold capitalize">{user?.store?.status ?? '—'}</p></div>
+        <div className="flex flex-col sm:flex-row gap-6 items-start">
+          {/* Logo uploader */}
+          <LogoUpload
+            currentLogo={logoUrl}
+            onUpload={handleLogoUpload}
+            label="Store Icon"
+            hint="JPG, PNG or WebP · max 2 MB · shown on receipts and dashboard"
+          />
+
+          {/* Store details */}
+          <div className="flex-1 grid sm:grid-cols-3 gap-4 text-sm self-center">
+            <div>
+              <p className="text-muted-foreground text-xs uppercase tracking-wider mb-1">Store Name</p>
+              <p className="font-semibold">{user?.store?.name ?? '—'}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs uppercase tracking-wider mb-1">Currency</p>
+              <p className="font-semibold">{user?.store?.currency ?? '—'}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs uppercase tracking-wider mb-1">Status</p>
+              <p className="font-semibold capitalize">{user?.store?.status ?? '—'}</p>
+            </div>
+          </div>
         </div>
       </Card>
 

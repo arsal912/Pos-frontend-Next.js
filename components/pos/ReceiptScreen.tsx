@@ -26,6 +26,16 @@ function isOfflineMode(p: Props): p is OfflineProps {
   return 'offlineResult' in p;
 }
 
+/** Escape user-supplied strings before interpolating into innerHTML to prevent XSS. */
+function escHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 export default function ReceiptScreen(props: Props) {
   const [countdown, setCountdown] = useState(8);
   const [printing,  setPrinting]  = useState(false);
@@ -75,21 +85,21 @@ export default function ReceiptScreen(props: Props) {
       `table{width:100%} td{vertical-align:top}`,
       `.offline-badge{background:#f59e0b;color:white;padding:2px 6px;border-radius:4px;font-size:10px}`,
       `</style></head><body>`,
-      `<div class="center"><h2>${storeName}</h2>`,
+      `<div class="center"><h2>${escHtml(storeName)}</h2>`,
       `<p><span class="offline-badge">⚡ OFFLINE SALE</span></p>`,
-      `<p><strong>${result.offline_reference}</strong></p>`,
+      `<p><strong>${escHtml(result.offline_reference)}</strong></p>`,
       `<p>${new Date().toLocaleString()}</p></div><hr>`,
     ];
 
     if (cart.customer) {
-      lines.push(`<p>Customer: ${cart.customer.name}</p>`);
-      if (cart.customer.phone) lines.push(`<p>Phone: ${cart.customer.phone}</p>`);
+      lines.push(`<p>Customer: ${escHtml(cart.customer.name)}</p>`);
+      if (cart.customer.phone) lines.push(`<p>Phone: ${escHtml(cart.customer.phone)}</p>`);
       lines.push(`<hr>`);
     }
 
     lines.push(`<table>`);
     for (const item of cart.items) {
-      lines.push(`<tr><td>${item.product_name}</td><td class="right">${item.line_total.toFixed(2)}</td></tr>`);
+      lines.push(`<tr><td>${escHtml(item.product_name)}</td><td class="right">${item.line_total.toFixed(2)}</td></tr>`);
       lines.push(`<tr><td style="font-size:10px;color:#666">&nbsp;&nbsp;${item.quantity} × ${item.unit_price.toFixed(2)}</td><td></td></tr>`);
     }
     lines.push(`</table><hr>`);
@@ -107,7 +117,7 @@ export default function ReceiptScreen(props: Props) {
     }
 
     lines.push(`<hr>`);
-    lines.push(`<p style="font-size:10px;text-align:center;color:#666">Offline sale — will sync automatically when connected.<br>Reference: ${result.offline_reference}</p>`);
+    lines.push(`<p style="font-size:10px;text-align:center;color:#666">Offline sale — will sync automatically when connected.<br>Reference: ${escHtml(result.offline_reference)}</p>`);
     lines.push(`</body></html>`);
 
     const win = window.open('', '_blank');

@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import {
-  useEffect, useState, useCallback, useRef, KeyboardEvent as ReactKeyboardEvent,
+  useEffect, useState, useCallback, useRef, useMemo, KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -88,7 +88,12 @@ export default function PosPage() {
   const offlineCartHook = useOfflineCart();
 
   // Determine display data: prefer IndexedDB when populated, fall back to API
-  const displayProducts   = offlineProducts != null   ? (offlineProducts   ?? []) : products;
+  const displayProducts = useMemo(() => {
+    const base = offlineProducts != null ? (offlineProducts ?? []) : products;
+    return productSearch
+      ? base.filter((p: any) => p.name?.toLowerCase().includes(productSearch.toLowerCase()))
+      : base;
+  }, [offlineProducts, products, productSearch]);
   const displayCategories = offlineCategories != null ? (offlineCategories ?? []) : categories;
   const usingOfflineData  = offlineProducts != null;
 

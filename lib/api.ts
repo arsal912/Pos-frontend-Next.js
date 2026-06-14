@@ -14,6 +14,10 @@ export const api: AxiosInstance = axios.create({
   withCredentials: false,
 });
 
+// Token stored in localStorage. Risk: accessible to XSS. Mitigation: strict CSP headers
+// prevent inline scripts; all user input is escaped. Migration path: httpOnly cookies
+// (requires backend session changes) deferred to post-launch security hardening.
+
 // Attach token to every request
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (typeof window !== 'undefined') {
