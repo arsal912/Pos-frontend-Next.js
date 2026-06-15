@@ -38,28 +38,28 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 const NAV_ITEMS = [
-  { href: '/dashboard',                label: 'Dashboard',       icon: LayoutDashboard, exact: true },
-  { href: '/dashboard/pos',            label: 'POS Sales',       icon: ShoppingCart },
-  { href: '/dashboard/products',       label: 'Products',        icon: Package },
-  { href: '/dashboard/categories',     label: 'Categories',      icon: Layers },
-  { href: '/dashboard/brands',         label: 'Brands',          icon: Tag },
-  { href: '/dashboard/inventory',      label: 'Inventory',       icon: BarChart3 },
-  { href: '/dashboard/suppliers',      label: 'Suppliers',       icon: Truck },
-  { href: '/dashboard/purchase-orders',label: 'Purchase Orders', icon: FileText },
-  { href: '/dashboard/grns',           label: 'GRNs',            icon: ClipboardCheck },
-  { href: '/dashboard/stock-transfers',label: 'Transfers',       icon: ArrowLeftRight },
-  { href: '/dashboard/customers',      label: 'Customers',       icon: Users },
-  { href: '/dashboard/staff',          label: 'Staff',           icon: UserCog },
-  { href: '/dashboard/loyalty',        label: 'Loyalty',         icon: Gift },
-  { href: '/dashboard/credit',         label: 'Credit',          icon: BadgeDollarSign },
-  { href: '/dashboard/cash-drawer',         label: 'Cash Drawer',  icon: Vault },
-  { href: '/dashboard/expenses',            label: 'Expenses',     icon: Receipt },
-  { href: '/dashboard/pos/sync-conflicts',  label: 'Sync Conflicts', icon: AlertTriangle },
-  { href: '/dashboard/communications/campaigns',  label: 'Campaigns',  icon: Send },
-  { href: '/dashboard/communications/templates', label: 'Templates',  icon: MessageSquare },
-  { href: '/dashboard/reports',        label: 'Reports',         icon: BarChart3 },
-  { href: '/dashboard/billing',        label: 'Billing',         icon: CreditCard },
-  { href: '/dashboard/settings',       label: 'Settings',        icon: Settings },
+  { href: '/dashboard',                label: 'Dashboard',       icon: LayoutDashboard, exact: true,  permission: null },
+  { href: '/dashboard/pos',            label: 'POS Sales',       icon: ShoppingCart,                  permission: 'create-sales' },
+  { href: '/dashboard/products',       label: 'Products',        icon: Package,                       permission: 'view-products' },
+  { href: '/dashboard/categories',     label: 'Categories',      icon: Layers,                        permission: 'view-products' },
+  { href: '/dashboard/brands',         label: 'Brands',          icon: Tag,                           permission: 'view-products' },
+  { href: '/dashboard/inventory',      label: 'Inventory',       icon: BarChart3,                     permission: 'view-inventory' },
+  { href: '/dashboard/suppliers',      label: 'Suppliers',       icon: Truck,                         permission: 'view-suppliers' },
+  { href: '/dashboard/purchase-orders',label: 'Purchase Orders', icon: FileText,                      permission: 'manage-inventory' },
+  { href: '/dashboard/grns',           label: 'GRNs',            icon: ClipboardCheck,                permission: 'manage-inventory' },
+  { href: '/dashboard/stock-transfers',label: 'Transfers',       icon: ArrowLeftRight,                permission: 'transfer-stock' },
+  { href: '/dashboard/customers',      label: 'Customers',       icon: Users,                         permission: 'view-customers' },
+  { href: '/dashboard/staff',          label: 'Staff',           icon: UserCog,                       permission: 'view-users' },
+  { href: '/dashboard/loyalty',        label: 'Loyalty',         icon: Gift,                          permission: 'view-loyalty' },
+  { href: '/dashboard/credit',         label: 'Credit',          icon: BadgeDollarSign,               permission: 'manage-customer-credit' },
+  { href: '/dashboard/cash-drawer',         label: 'Cash Drawer',  icon: Vault,                      permission: 'create-sales' },
+  { href: '/dashboard/expenses',            label: 'Expenses',     icon: Receipt,                    permission: 'manage-expenses' },
+  { href: '/dashboard/pos/sync-conflicts',  label: 'Sync Conflicts', icon: AlertTriangle,            permission: 'create-sales' },
+  { href: '/dashboard/communications/campaigns',  label: 'Campaigns',  icon: Send,                  permission: 'send-customer-communication' },
+  { href: '/dashboard/communications/templates', label: 'Templates',  icon: MessageSquare,           permission: 'send-customer-communication' },
+  { href: '/dashboard/reports',        label: 'Reports',         icon: BarChart3,                     permission: 'view-reports' },
+  { href: '/dashboard/billing',        label: 'Billing',         icon: CreditCard,                    permission: null },
+  { href: '/dashboard/settings',       label: 'Settings',        icon: Settings,                      permission: 'manage-settings' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -115,7 +115,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto sidebar-scroll">
-          {NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.filter(item => {
+            if (!item.permission) return true;
+            if (user?.roles?.includes('store-owner')) return true;
+            return user?.permissions?.includes(item.permission) ?? false;
+          }).map((item) => {
             const isActive = item.exact ? pathname === item.href : pathname?.startsWith(item.href);
             const Icon = item.icon;
             return (
