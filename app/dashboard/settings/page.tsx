@@ -6,8 +6,9 @@ import { motion } from 'framer-motion';
 import {
   Printer, Settings2, Tag, Ruler,
   ChevronRight, MessageSquare, Monitor, MessageCircle,
-  Save, Loader2, ShieldCheck,
+  Save, Loader2, ShieldCheck, Palette,
 } from 'lucide-react';
+import { ThemeSelector } from '@/components/ui/ThemeSelector';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,6 +69,15 @@ export default function SettingsPage() {
         <h1 className="font-display text-4xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground mt-1">Configure your store and POS system</p>
       </div>
+
+      {/* Theme Color */}
+      <Card className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Palette className="h-4 w-4 text-primary" />
+          <h2 className="font-display font-bold text-lg">Appearance</h2>
+        </div>
+        <ThemeSelector />
+      </Card>
 
       {/* Store info + logo */}
       <Card className="p-6">

@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import {
-  Plus, Pencil, Trash2, Loader2, Search, Filter,
-  X, Save, ChevronLeft, ChevronRight, TrendingDown,
-  Calendar, CreditCard, Wallet, RefreshCw,
+  Trash2, Loader2, Search, Pencil, TrendingDown,
+  ChevronLeft, ChevronRight, RefreshCw, X, Check,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
@@ -18,32 +17,28 @@ import { toast } from 'sonner';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Expense {
-  id: number;
-  expense_date: string;
-  category: string;
-  description: string;
-  amount: number;
+  id: number; expense_date: string; category: string;
+  description: string; amount: number;
   payment_method: 'cash' | 'card' | 'bank_transfer' | 'cheque' | 'other';
-  branch_id: number | null;
-  reference: string | null;
-  notes: string | null;
-  created_at: string;
+  branch_id: number | null; reference: string | null;
+  notes: string | null; created_at: string;
 }
 
 const PAYMENT_METHODS = [
-  { value: 'cash',          label: 'Cash',          icon: '💵' },
-  { value: 'card',          label: 'Card',           icon: '💳' },
-  { value: 'bank_transfer', label: 'Bank Transfer',  icon: '🏦' },
-  { value: 'cheque',        label: 'Cheque',         icon: '📄' },
-  { value: 'other',         label: 'Other',          icon: '📋' },
-];
+  { value: 'cash',          label: 'Cash',          color: 'text-green-700 bg-green-50 border-green-200' },
+  { value: 'card',          label: 'Card',          color: 'text-blue-700 bg-blue-50 border-blue-200' },
+  { value: 'bank_transfer', label: 'Bank Transfer', color: 'text-violet-700 bg-violet-50 border-violet-200' },
+  { value: 'cheque',        label: 'Cheque',        color: 'text-amber-700 bg-amber-50 border-amber-200' },
+  { value: 'other',         label: 'Other',         color: 'text-gray-600 bg-gray-50 border-gray-200' },
+] as const;
 
 const DEFAULT_CATEGORIES = [
-  'Rent', 'Utilities', 'Salary', 'Marketing', 'Supplies',
-  'Maintenance', 'Transport', 'Food & Beverages', 'Insurance', 'Other',
+  'Rent', 'Electricity', 'Internet', 'Salary', 'Wages',
+  'Marketing', 'Supplies', 'Maintenance', 'Transport',
+  'Food & Beverages', 'Insurance', 'Tax', 'Other',
 ];
 
-const METHOD_COLORS: Record<string, string> = {
+const METHOD_BADGE: Record<string, string> = {
   cash: 'bg-green-100 text-green-700',
   card: 'bg-blue-100 text-blue-700',
   bank_transfer: 'bg-violet-100 text-violet-700',
@@ -51,162 +46,183 @@ const METHOD_COLORS: Record<string, string> = {
   other: 'bg-gray-100 text-gray-600',
 };
 
-// ── Expense Modal ─────────────────────────────────────────────────────────────
+// ── Empty form state ──────────────────────────────────────────────────────────
 
-function ExpenseModal({ expense, categories, onClose, onSaved }: {
-  expense: Expense | null;
+const emptyForm = () => ({
+  expense_date:   new Date().toISOString().split('T')[0],
+  category:       '',
+  description:    '',
+  amount:         '',
+  payment_method: 'cash' as const,
+  reference:      '',
+  notes:          '',
+});
+
+// ── Add / Edit Expense Form ───────────────────────────────────────────────────
+
+function ExpenseForm({
+  initial, categories, onSaved, onCancel, editId,
+}: {
+  initial?: ReturnType<typeof emptyForm>;
   categories: string[];
-  onClose: () => void;
   onSaved: () => void;
+  onCancel?: () => void;
+  editId?: number | null;
 }) {
-  const isNew = !expense;
-  const today = new Date().toISOString().split('T')[0];
+  const [form,     setForm]     = useState(initial ?? emptyForm());
+  const [saving,   setSaving]   = useState(false);
+  const [catInput, setCatInput] = useState(initial?.category ?? '');
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const [date,    setDate]    = useState(expense?.expense_date ?? today);
-  const [cat,     setCat]     = useState(expense?.category ?? '');
-  const [desc,    setDesc]    = useState(expense?.description ?? '');
-  const [amount,  setAmount]  = useState(expense?.amount?.toString() ?? '');
-  const [method,  setMethod]  = useState<Expense['payment_method']>(expense?.payment_method ?? 'cash');
-  const [ref,     setRef]     = useState(expense?.reference ?? '');
-  const [notes,   setNotes]   = useState(expense?.notes ?? '');
-  const [catInput,setCatInput]= useState(expense?.category ?? '');
-  const [saving,  setSaving]  = useState(false);
-  const [showCatSuggestions, setShowCatSuggestions] = useState(false);
-
-  const allCategories = [...new Set([...DEFAULT_CATEGORIES, ...categories])].sort();
-  const filteredCats  = allCategories.filter(c =>
-    c.toLowerCase().includes(catInput.toLowerCase()) && c !== catInput
+  const isEdit     = !!editId;
+  const allCats    = [...new Set([...DEFAULT_CATEGORIES, ...categories])].sort();
+  const suggestions = allCats.filter(c =>
+    catInput.length > 0 &&
+    c.toLowerCase().includes(catInput.toLowerCase()) &&
+    c !== catInput
   );
 
-  const handleSave = async () => {
-    if (!date)   return toast.error('Date is required.');
-    if (!cat)    return toast.error('Category is required.');
-    if (!desc)   return toast.error('Description is required.');
-    if (!amount || parseFloat(amount) <= 0) return toast.error('Enter a valid amount.');
+  const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.category)    return toast.error('Category is required.');
+    if (!form.description) return toast.error('Description is required.');
+    if (!form.amount || parseFloat(form.amount) <= 0) return toast.error('Enter a valid amount.');
+
     setSaving(true);
     try {
       const body = {
-        expense_date:   date,
-        category:       cat,
-        description:    desc,
-        amount:         parseFloat(amount),
-        payment_method: method,
-        reference:      ref   || undefined,
-        notes:          notes || undefined,
+        expense_date:   form.expense_date,
+        category:       form.category,
+        description:    form.description,
+        amount:         parseFloat(form.amount),
+        payment_method: form.payment_method,
+        reference:      form.reference || undefined,
+        notes:          form.notes     || undefined,
       };
-      if (isNew) {
+      if (isEdit) {
+        await apiClient.put(`/store/expenses/${editId}`, body);
+        toast.success('Expense updated.');
+      } else {
         await apiClient.post('/store/expenses', body);
         toast.success('Expense recorded.');
-      } else {
-        await apiClient.put(`/store/expenses/${expense!.id}`, body);
-        toast.success('Expense updated.');
       }
+      if (!isEdit) setForm(emptyForm());
       onSaved();
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setSaving(false); }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <motion.div initial={{ opacity:0, scale:0.95 }} animate={{ opacity:1, scale:1 }}
-        className="bg-background border rounded-2xl shadow-2xl w-full max-w-lg">
-
-        <div className="flex items-center justify-between px-6 py-4 border-b">
-          <h2 className="font-display font-bold text-xl">
-            {isNew ? 'Record Expense' : 'Edit Expense'}
-          </h2>
-          <Button variant="ghost" size="icon" onClick={onClose}><X className="h-4 w-4" /></Button>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Row 1: Date + Amount */}
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <Label className="text-xs">Date *</Label>
+          <Input type="date" value={form.expense_date}
+            onChange={e => set('expense_date', e.target.value)}
+            max={new Date().toISOString().split('T')[0]}
+            className="h-9" />
         </div>
-
-        <div className="p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            {/* Date */}
-            <div className="space-y-1.5">
-              <Label>Date *</Label>
-              <Input type="date" value={date} onChange={e => setDate(e.target.value)} max={today} />
-            </div>
-            {/* Amount */}
-            <div className="space-y-1.5">
-              <Label>Amount *</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">Rs</span>
-                <Input type="number" value={amount} min="0.01" step="0.01"
-                  onChange={e => setAmount(e.target.value)}
-                  placeholder="0.00" className="pl-9 font-mono" />
-              </div>
-            </div>
-          </div>
-
-          {/* Category with autocomplete */}
-          <div className="space-y-1.5 relative">
-            <Label>Category *</Label>
-            <Input
-              value={catInput}
-              onChange={e => { setCatInput(e.target.value); setCat(e.target.value); setShowCatSuggestions(true); }}
-              onFocus={() => setShowCatSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowCatSuggestions(false), 150)}
-              placeholder="e.g. Rent, Salary, Utilities…"
-            />
-            {showCatSuggestions && filteredCats.length > 0 && (
-              <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-background border rounded-xl shadow-lg overflow-hidden">
-                {filteredCats.slice(0,6).map(c => (
-                  <button key={c} onMouseDown={() => { setCat(c); setCatInput(c); setShowCatSuggestions(false); }}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors">
-                    {c}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Description */}
-          <div className="space-y-1.5">
-            <Label>Description *</Label>
-            <Input value={desc} onChange={e => setDesc(e.target.value)}
-              placeholder="What was this expense for?" />
-          </div>
-
-          {/* Payment method */}
-          <div className="space-y-1.5">
-            <Label>Payment Method</Label>
-            <div className="flex gap-2 flex-wrap">
-              {PAYMENT_METHODS.map(m => (
-                <button key={m.value}
-                  onClick={() => setMethod(m.value as Expense['payment_method'])}
-                  className={cn(
-                    'px-3 py-1.5 rounded-lg border text-xs font-medium transition-all',
-                    method === m.value
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'hover:bg-muted/50'
-                  )}>
-                  {m.icon} {m.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Reference (optional) */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Reference <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
-              <Input value={ref} onChange={e => setRef(e.target.value)} placeholder="Invoice/receipt #" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Notes <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
-              <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any extra detail" />
-            </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Amount *</Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">Rs</span>
+            <Input type="number" value={form.amount} min="0.01" step="0.01"
+              onChange={e => set('amount', e.target.value)}
+              placeholder="0.00" className="pl-8 h-9 font-mono" required />
           </div>
         </div>
+      </div>
 
-        <div className="flex gap-2 px-6 py-4 border-t">
-          <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
-          <Button onClick={handleSave} disabled={saving} className="flex-1 gap-2">
-            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {isNew ? 'Record Expense' : 'Save Changes'}
-          </Button>
+      {/* Row 2: Category autocomplete */}
+      <div className="space-y-1 relative">
+        <Label className="text-xs">Category *</Label>
+        <Input
+          value={catInput}
+          onChange={e => { setCatInput(e.target.value); set('category', e.target.value); setShowSuggestions(true); }}
+          onFocus={() => setShowSuggestions(true)}
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+          placeholder="Select or type a category…"
+          className="h-9"
+          required
+        />
+        {/* Quick category pills */}
+        {!catInput && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {DEFAULT_CATEGORIES.slice(0, 8).map(c => (
+              <button key={c} type="button"
+                onClick={() => { setCatInput(c); set('category', c); }}
+                className="text-xs px-2.5 py-1 rounded-full border bg-muted/40 hover:bg-primary/10 hover:border-primary/30 hover:text-primary transition-colors">
+                {c}
+              </button>
+            ))}
+          </div>
+        )}
+        {/* Autocomplete dropdown */}
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-background border rounded-xl shadow-xl overflow-hidden">
+            {suggestions.slice(0, 6).map(c => (
+              <button key={c} type="button"
+                onMouseDown={() => { setCatInput(c); set('category', c); setShowSuggestions(false); }}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 flex items-center gap-2">
+                <Check className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100" />{c}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Row 3: Description */}
+      <div className="space-y-1">
+        <Label className="text-xs">Description *</Label>
+        <Input value={form.description} onChange={e => set('description', e.target.value)}
+          placeholder="e.g. June rent payment, Staff salary, Electricity bill" className="h-9" required />
+      </div>
+
+      {/* Row 4: Payment method */}
+      <div className="space-y-1">
+        <Label className="text-xs">Payment Method</Label>
+        <div className="flex flex-wrap gap-2">
+          {PAYMENT_METHODS.map(m => (
+            <button key={m.value} type="button"
+              onClick={() => set('payment_method', m.value)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg border text-xs font-medium transition-all',
+                form.payment_method === m.value ? m.color + ' border-current' : 'hover:bg-muted/50'
+              )}>
+              {m.label}
+            </button>
+          ))}
         </div>
-      </motion.div>
-    </div>
+      </div>
+
+      {/* Row 5: Reference + Notes */}
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <Label className="text-xs">Reference # <span className="text-muted-foreground">(optional)</span></Label>
+          <Input value={form.reference} onChange={e => set('reference', e.target.value)}
+            placeholder="Invoice / receipt number" className="h-9 text-xs" />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Notes <span className="text-muted-foreground">(optional)</span></Label>
+          <Input value={form.notes} onChange={e => set('notes', e.target.value)}
+            placeholder="Any additional details" className="h-9 text-xs" />
+        </div>
+      </div>
+
+      {/* Submit */}
+      <div className="flex gap-2 pt-1">
+        <Button type="submit" disabled={saving} className="gap-2 flex-1 sm:flex-none sm:min-w-36">
+          {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+          {isEdit ? 'Save Changes' : 'Add Expense'}
+        </Button>
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+        )}
+      </div>
+    </form>
   );
 }
 
@@ -218,7 +234,6 @@ export default function ExpensesPage() {
   const [loading,    setLoading]    = useState(true);
   const [meta,       setMeta]       = useState<any>(null);
   const [editExpense, setEditExpense]= useState<Expense | null>(null);
-  const [modalOpen,  setModalOpen]  = useState(false);
   const [deleting,   setDeleting]   = useState<number | null>(null);
 
   // Filters
@@ -252,12 +267,10 @@ export default function ExpensesPage() {
   const filtered = search
     ? expenses.filter(e =>
         e.description.toLowerCase().includes(search.toLowerCase()) ||
-        e.category.toLowerCase().includes(search.toLowerCase()) ||
-        (e.reference ?? '').toLowerCase().includes(search.toLowerCase())
+        e.category.toLowerCase().includes(search.toLowerCase())
       )
     : expenses;
 
-  // Summary stats from current page
   const totalShown = filtered.reduce((s, e) => s + Number(e.amount), 0);
 
   const handleDelete = async (exp: Expense) => {
@@ -271,178 +284,186 @@ export default function ExpensesPage() {
     finally { setDeleting(null); }
   };
 
-  const thisMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const fmt = (d: string) =>
+    new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="font-display text-4xl font-bold tracking-tight">Expenses</h1>
-          <p className="text-muted-foreground mt-1">Track and manage store operating costs</p>
-        </div>
-        <Button onClick={() => { setEditExpense(null); setModalOpen(true); }} className="gap-2">
-          <Plus className="h-4 w-4" />Record Expense
-        </Button>
+      <div>
+        <h1 className="font-display text-4xl font-bold tracking-tight">Expenses</h1>
+        <p className="text-muted-foreground mt-1">Record and track store operating costs</p>
       </div>
 
-      {/* Quick stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {[
-          {
-            label: 'This Month', icon: Calendar, color: 'text-blue-600',
-            click: () => {
-              setDateFrom(thisMonth + '-01');
-              setDateTo(new Date().toISOString().split('T')[0]);
-              setPage(1);
-            },
-          },
-          {
-            label: 'This Year', icon: TrendingDown, color: 'text-violet-600',
-            click: () => {
-              setDateFrom(new Date().getFullYear() + '-01-01');
-              setDateTo(new Date().toISOString().split('T')[0]);
-              setPage(1);
-            },
-          },
-          {
-            label: 'All Time', icon: Wallet, color: 'text-green-600',
-            click: () => { setDateFrom(''); setDateTo(''); setPage(1); },
-          },
-        ].map(s => (
-          <Card key={s.label} className="p-4 cursor-pointer hover:border-primary/40 transition-colors" onClick={s.click}>
-            <div className="flex items-center gap-2 mb-1">
-              <s.icon className={cn('h-4 w-4', s.color)} />
-              <p className="text-xs text-muted-foreground">{s.label}</p>
+      <div className="grid lg:grid-cols-5 gap-6">
+
+        {/* ── LEFT: Add / Edit Form ──────────────────────────── */}
+        <div className="lg:col-span-2">
+          <AnimatePresence mode="wait">
+            {editExpense ? (
+              <motion.div key="edit" initial={{ opacity:0, x:-10 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-10 }}>
+                <Card className="p-5 border-primary/30 shadow-md">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className="font-display font-bold text-lg">Edit Expense</h2>
+                      <p className="text-xs text-muted-foreground">{editExpense.description}</p>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditExpense(null)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <ExpenseForm
+                    initial={{
+                      expense_date:   editExpense.expense_date,
+                      category:       editExpense.category,
+                      description:    editExpense.description,
+                      amount:         String(editExpense.amount),
+                      payment_method: editExpense.payment_method,
+                      reference:      editExpense.reference ?? '',
+                      notes:          editExpense.notes ?? '',
+                    }}
+                    categories={categories}
+                    editId={editExpense.id}
+                    onSaved={() => { setEditExpense(null); load(); }}
+                    onCancel={() => setEditExpense(null)}
+                  />
+                </Card>
+              </motion.div>
+            ) : (
+              <motion.div key="add" initial={{ opacity:0, x:-10 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:-10 }}>
+                <Card className="p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <TrendingDown className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="font-display font-bold text-lg">Add Custom Expense</h2>
+                      <p className="text-xs text-muted-foreground">Record any store operating cost</p>
+                    </div>
+                  </div>
+                  <ExpenseForm categories={categories} onSaved={load} />
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* ── RIGHT: Expense List ────────────────────────────── */}
+        <div className="lg:col-span-3 space-y-4">
+
+          {/* Filters */}
+          <Card className="p-3">
+            <div className="flex flex-wrap gap-2">
+              <div className="relative flex-1 min-w-36">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder="Search…" className="pl-8 h-8 text-xs" />
+              </div>
+              <select value={catFilter} onChange={e => { setCatFilter(e.target.value); setPage(1); }}
+                className="h-8 rounded-md border bg-background px-2 text-xs">
+                <option value="">All categories</option>
+                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+                className="h-8 w-32 text-xs" />
+              <Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }}
+                className="h-8 w-32 text-xs" />
+              <Button variant="ghost" size="sm" className="h-8 text-xs px-2"
+                onClick={() => { setCatFilter(''); setDateFrom(''); setDateTo(''); setSearch(''); setPage(1); }}>
+                <RefreshCw className="h-3.5 w-3.5" />
+              </Button>
             </div>
-            <p className="font-display font-bold text-lg">Click to filter</p>
           </Card>
-        ))}
-      </div>
 
-      {/* Filters */}
-      <Card className="p-4">
-        <div className="flex flex-wrap gap-3">
-          <div className="relative flex-1 min-w-40">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search description or reference…" className="pl-9 h-9" />
-          </div>
-          <select value={catFilter} onChange={e => { setCatFilter(e.target.value); setPage(1); }}
-            className="h-9 rounded-md border bg-background px-3 text-sm">
-            <option value="">All categories</option>
-            {categories.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }}
-            className="h-9 w-36 text-sm" placeholder="From" />
-          <Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }}
-            className="h-9 w-36 text-sm" placeholder="To" />
-          <Button variant="ghost" size="sm" onClick={() => { setCatFilter(''); setDateFrom(''); setDateTo(''); setSearch(''); setPage(1); }}>
-            <RefreshCw className="h-3.5 w-3.5 mr-1" />Reset
-          </Button>
-        </div>
-      </Card>
-
-      {/* Table */}
-      <Card className="overflow-hidden">
-        {loading ? (
-          <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-16">
-            <TrendingDown className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-30" />
-            <p className="text-muted-foreground font-medium">No expenses found.</p>
-            <Button variant="outline" size="sm" className="mt-3 gap-2"
-              onClick={() => { setEditExpense(null); setModalOpen(true); }}>
-              <Plus className="h-4 w-4" />Record your first expense
-            </Button>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b bg-muted/30">
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Date</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Category</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Description</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Method</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Amount</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
-                </tr></thead>
-                <tbody>
+          {/* List */}
+          <Card className="overflow-hidden">
+            {loading ? (
+              <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-12">
+                <TrendingDown className="h-10 w-10 mx-auto mb-3 opacity-20 text-muted-foreground" />
+                <p className="text-muted-foreground text-sm">No expenses found.</p>
+                <p className="text-xs text-muted-foreground mt-1">Use the form on the left to record an expense.</p>
+              </div>
+            ) : (
+              <>
+                <div className="divide-y">
                   {filtered.map((exp, i) => (
-                    <motion.tr key={exp.id} initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay: i*0.01 }}
-                      className="border-b last:border-0 hover:bg-muted/10">
-                      <td className="px-4 py-3 text-muted-foreground text-xs font-mono whitespace-nowrap">
-                        {new Date(exp.expense_date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs bg-muted/50 px-2 py-0.5 rounded-full">{exp.category}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="font-medium">{exp.description}</p>
-                        {exp.reference && <p className="text-xs text-muted-foreground font-mono">{exp.reference}</p>}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', METHOD_COLORS[exp.payment_method])}>
-                          {exp.payment_method.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono font-semibold">
-                        {Number(exp.amount).toLocaleString('en', { minimumFractionDigits:2 })}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1 justify-end">
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
-                            onClick={() => { setEditExpense(exp); setModalOpen(true); }}>
+                    <motion.div key={exp.id}
+                      initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay: i*0.02 }}
+                      className={cn(
+                        'flex items-start gap-3 px-4 py-3 hover:bg-muted/10 transition-colors',
+                        editExpense?.id === exp.id && 'bg-primary/5'
+                      )}>
+                      {/* Date */}
+                      <div className="text-center flex-shrink-0 w-12 pt-0.5">
+                        <p className="text-xs font-bold text-muted-foreground">
+                          {new Date(exp.expense_date).toLocaleDateString('en-GB', { day:'2-digit', month:'short' })}
+                        </p>
+                      </div>
+
+                      {/* Details */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-medium text-sm">{exp.description}</p>
+                          <span className="text-xs bg-muted/60 px-2 py-0.5 rounded-full">{exp.category}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className={cn('text-xs px-1.5 py-0.5 rounded font-medium', METHOD_BADGE[exp.payment_method])}>
+                            {exp.payment_method.replace('_',' ')}
+                          </span>
+                          {exp.reference && (
+                            <span className="text-xs text-muted-foreground font-mono">#{exp.reference}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Amount + Actions */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <p className="font-mono font-bold text-sm">
+                          {Number(exp.amount).toLocaleString('en', { minimumFractionDigits:2 })}
+                        </p>
+                        <div className="flex gap-0.5">
+                          <Button variant="ghost" size="icon" className="h-7 w-7"
+                            onClick={() => setEditExpense(exp)}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive"
-                            onClick={() => handleDelete(exp)} disabled={deleting === exp.id}>
-                            {deleting === exp.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
+                            onClick={() => handleDelete(exp)} disabled={deleting===exp.id}>
+                            {deleting===exp.id
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <Trash2 className="h-3.5 w-3.5" />}
                           </Button>
                         </div>
-                      </td>
-                    </motion.tr>
+                      </div>
+                    </motion.div>
                   ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Footer: total + pagination */}
-            <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/10">
-              <p className="text-sm font-medium">
-                Showing total:{' '}
-                <span className="font-mono font-bold text-foreground">
-                  {totalShown.toLocaleString('en', { minimumFractionDigits:2 })}
-                </span>
-              </p>
-              {meta && meta.last_page > 1 && (
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" disabled={page<=1} onClick={() => setPage(p=>p-1)} className="h-8 gap-1">
-                    <ChevronLeft className="h-4 w-4" />Prev
-                  </Button>
-                  <span className="text-sm px-2">{page}/{meta.last_page}</span>
-                  <Button variant="outline" size="sm" disabled={page>=meta.last_page} onClick={() => setPage(p=>p+1)} className="h-8 gap-1">
-                    Next<ChevronRight className="h-4 w-4" />
-                  </Button>
                 </div>
-              )}
-            </div>
-          </>
-        )}
-      </Card>
 
-      {/* Modal */}
-      <AnimatePresence>
-        {modalOpen && (
-          <ExpenseModal
-            expense={editExpense}
-            categories={categories}
-            onClose={() => setModalOpen(false)}
-            onSaved={() => { setModalOpen(false); load(); }}
-          />
-        )}
-      </AnimatePresence>
+                {/* Footer */}
+                <div className="flex items-center justify-between px-4 py-2.5 border-t bg-muted/10 text-xs">
+                  <span className="text-muted-foreground">
+                    Total shown: <span className="font-mono font-bold text-foreground">
+                      Rs {totalShown.toLocaleString('en', { minimumFractionDigits:2 })}
+                    </span>
+                  </span>
+                  {meta && meta.last_page > 1 && (
+                    <div className="flex items-center gap-1.5">
+                      <Button variant="outline" size="icon" className="h-6 w-6" disabled={page<=1} onClick={() => setPage(p=>p-1)}>
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                      </Button>
+                      <span className="text-muted-foreground">{page}/{meta.last_page}</span>
+                      <Button variant="outline" size="icon" className="h-6 w-6" disabled={page>=meta.last_page} onClick={() => setPage(p=>p+1)}>
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

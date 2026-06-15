@@ -22,11 +22,13 @@ import {
   Plug,
   Monitor,
   TrendingDown,
+  Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { ThemeProvider } from '@/components/ui/ThemeProvider';
 
 const NAV_ITEMS = [
   { href: '/admin/dashboard',        label: 'Dashboard',        icon: LayoutDashboard },
@@ -43,6 +45,7 @@ const NAV_ITEMS = [
   { href: '/admin/reports',                  label: 'Reports',       icon: BarChart3 },
   { href: '/admin/landing-page',     label: 'Landing Page',     icon: Globe },
   { href: '/admin/api-logs',         label: 'API Logs',         icon: ScrollText },
+  { href: '/admin/settings',         label: 'Settings',         icon: Settings },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -83,7 +86,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <ThemeProvider storageKey="admin_theme">
+      <div className="min-h-screen bg-background flex">
       {/* Sidebar */}
       <aside className="w-64 border-r bg-card/30 backdrop-blur sticky top-0 h-screen flex flex-col">
         <div className="p-6 border-b">
@@ -144,6 +148,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <main className="flex-1 overflow-x-hidden">
         <div className="p-6 md:p-10 max-w-7xl mx-auto">{children}</div>
       </main>
-    </div>
+      </div>
+    </ThemeProvider>
   );
 }

@@ -30,6 +30,7 @@ import {
   Receipt,
 } from 'lucide-react';
 import { OfflineGuard } from '@/components/pos/OfflineGuard';
+import { ThemeProvider } from '@/components/ui/ThemeProvider';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/auth';
@@ -98,7 +99,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <ThemeProvider storageKey="dashboard_theme">
+      <div className="min-h-screen bg-background flex">
       <aside className="w-64 border-r bg-card/30 backdrop-blur sticky top-0 h-screen flex flex-col">
         <div className="p-6 border-b">
           <Link href="/dashboard" className="flex items-center gap-2">
@@ -174,6 +176,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <OfflineGuard>{children}</OfflineGuard>
         </div>
       </main>
-    </div>
+      </div>
+    </ThemeProvider>
   );
 }
