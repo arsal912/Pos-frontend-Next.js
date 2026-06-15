@@ -21,6 +21,7 @@ import {
   MessageSquare,
   Plug,
   Monitor,
+  TrendingDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/auth';
@@ -30,13 +31,15 @@ import { toast } from 'sonner';
 const NAV_ITEMS = [
   { href: '/admin/dashboard',        label: 'Dashboard',        icon: LayoutDashboard },
   { href: '/admin/stores',           label: 'Stores',           icon: Store },
-  { href: '/admin/subscriptions',    label: 'Subscriptions',    icon: Users },
-  { href: '/admin/payments',         label: 'Payments',         icon: Receipt },
+  { href: '/admin/subscriptions',          label: 'Subscriptions',  icon: Users },
+  { href: '/admin/subscriptions/report',   label: 'Sub Report',     icon: BarChart3 },
+  { href: '/admin/payments',               label: 'Payments',       icon: Receipt },
   { href: '/admin/modules',          label: 'Modules',          icon: Puzzle },
   { href: '/admin/payment-gateways',         label: 'Gateways',      icon: CreditCard },
   { href: '/admin/pos-devices',             label: 'POS Devices',   icon: Monitor },
   { href: '/admin/communications',           label: 'Comms',         icon: MessageSquare },
   { href: '/admin/communications-providers', label: 'Providers',     icon: Plug },
+  { href: '/admin/expenses',                 label: 'Expenses',      icon: TrendingDown },
   { href: '/admin/reports',                  label: 'Reports',       icon: BarChart3 },
   { href: '/admin/landing-page',     label: 'Landing Page',     icon: Globe },
   { href: '/admin/api-logs',         label: 'API Logs',         icon: ScrollText },
@@ -95,7 +98,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto sidebar-scroll">
           {NAV_ITEMS.map((item) => {
             const isActive = pathname?.startsWith(item.href);
             const Icon = item.icon;

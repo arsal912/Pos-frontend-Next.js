@@ -27,6 +27,7 @@ import {
   MessageSquare,
   Send,
   UserCog,
+  Receipt,
 } from 'lucide-react';
 import { OfflineGuard } from '@/components/pos/OfflineGuard';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,7 @@ const NAV_ITEMS = [
   { href: '/dashboard/loyalty',        label: 'Loyalty',         icon: Gift },
   { href: '/dashboard/credit',         label: 'Credit',          icon: BadgeDollarSign },
   { href: '/dashboard/cash-drawer',         label: 'Cash Drawer',  icon: Vault },
+  { href: '/dashboard/expenses',            label: 'Expenses',     icon: Receipt },
   { href: '/dashboard/pos/sync-conflicts',  label: 'Sync Conflicts', icon: AlertTriangle },
   { href: '/dashboard/communications/campaigns',  label: 'Campaigns',  icon: Send },
   { href: '/dashboard/communications/templates', label: 'Templates',  icon: MessageSquare },
