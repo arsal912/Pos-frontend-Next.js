@@ -26,6 +26,7 @@ import {
   BadgeDollarSign,
   MessageSquare,
   Send,
+  UserCog,
 } from 'lucide-react';
 import { OfflineGuard } from '@/components/pos/OfflineGuard';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,7 @@ const NAV_ITEMS = [
   { href: '/dashboard/grns',           label: 'GRNs',            icon: ClipboardCheck },
   { href: '/dashboard/stock-transfers',label: 'Transfers',       icon: ArrowLeftRight },
   { href: '/dashboard/customers',      label: 'Customers',       icon: Users },
+  { href: '/dashboard/staff',          label: 'Staff',           icon: UserCog },
   { href: '/dashboard/loyalty',        label: 'Loyalty',         icon: Gift },
   { href: '/dashboard/credit',         label: 'Credit',          icon: BadgeDollarSign },
   { href: '/dashboard/cash-drawer',         label: 'Cash Drawer',  icon: Vault },

@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import {
   Printer, Settings2, Tag, Ruler,
   ChevronRight, MessageSquare, Monitor, MessageCircle,
-  Save, Loader2,
+  Save, Loader2, ShieldCheck,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ const SETTING_LINKS = [
   { href: '/dashboard/settings/units',          icon: Ruler,        label: 'Units of Measure',   desc: 'Piece, Kg, Litre, etc.' },
   { href: '/dashboard/settings/communications', icon: MessageSquare,label: 'Communications',     desc: 'Sender identity, quotas, opt-outs' },
   { href: '/dashboard/settings/devices',        icon: Monitor,      label: 'POS Devices',        desc: 'Offline terminals, device registry' },
+  { href: '/dashboard/settings/roles',          icon: ShieldCheck,  label: 'Roles & Permissions', desc: 'Create roles and control what each can access' },
 ];
 
 export default function SettingsPage() {
