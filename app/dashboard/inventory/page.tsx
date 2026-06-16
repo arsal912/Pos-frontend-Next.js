@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, RefreshCw, Package, Loader2,
   ChevronLeft, ChevronRight, History, SlidersHorizontal,
-  Plus, Minus, X, Save, Building2, Globe, ChevronDown, ChevronRight as ChevronRightIcon,
+  Plus, Minus, X, Save, Building2, ChevronDown, ChevronRight as ChevronRightIcon,
   ArrowLeftRight,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -273,14 +273,8 @@ export default function InventoryPage() {
           <p className="text-muted-foreground mt-1">Stock counts per branch and warehouse</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button asChild variant="outline" size="sm" className="gap-2">
-            <Link href="/dashboard/inventory/network"><Globe className="h-4 w-4" />Network Inventory</Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="gap-2">
-            <Link href="/dashboard/transfer-requests"><ArrowLeftRight className="h-4 w-4" />Transfer Requests</Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="gap-2">
-            <Link href="/dashboard/inventory/adjust"><SlidersHorizontal className="h-4 w-4" />Bulk Adjust</Link>
+          <Button asChild size="sm" className="gap-2">
+            <Link href="/dashboard/stock-transfers"><ArrowLeftRight className="h-4 w-4" />Transfer Stock</Link>
           </Button>
           <Button asChild variant="outline" size="sm" className="gap-2">
             <Link href="/dashboard/inventory/movements"><History className="h-4 w-4" />Movements</Link>
