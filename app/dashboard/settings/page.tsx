@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import {
   Printer, Settings2, Tag, Ruler,
   ChevronRight, MessageSquare, Monitor, MessageCircle,
-  Save, Loader2, ShieldCheck, Palette, Globe,
+  Save, Loader2, ShieldCheck, Palette, Globe, Keyboard,
 } from 'lucide-react';
 import { ThemeSelector } from '@/components/ui/ThemeSelector';
 import { Card } from '@/components/ui/card';
@@ -66,6 +66,7 @@ const SETTING_LINKS = [
   { href: '/dashboard/settings/communications', icon: MessageSquare,label: 'Communications',     desc: 'Sender identity, quotas, opt-outs' },
   { href: '/dashboard/settings/devices',        icon: Monitor,      label: 'POS Devices',        desc: 'Offline terminals, device registry' },
   { href: '/dashboard/settings/roles',          icon: ShieldCheck,  label: 'Roles & Permissions', desc: 'Create roles and control what each can access' },
+  { href: '/dashboard/settings/shortcuts',      icon: Keyboard,     label: 'Keyboard Shortcuts',  desc: 'Customize POS hotkeys for faster checkout' },
 ];
 
 // ── Page ──────────────────────────────────────────────────────────────────────

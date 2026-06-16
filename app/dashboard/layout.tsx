@@ -21,6 +21,7 @@ import {
   FileText,
   ClipboardCheck,
   ArrowLeftRight,
+  Globe,
   Vault,
   Gift,
   BadgeDollarSign,
@@ -28,6 +29,8 @@ import {
   Send,
   UserCog,
   Receipt,
+  Building2,
+  Warehouse,
 } from 'lucide-react';
 import { OfflineGuard } from '@/components/pos/OfflineGuard';
 import { ThemeProvider } from '@/components/ui/ThemeProvider';
@@ -44,10 +47,14 @@ const NAV_ITEMS = [
   { href: '/dashboard/categories',     label: 'Categories',      icon: Layers,                        permission: 'view-products' },
   { href: '/dashboard/brands',         label: 'Brands',          icon: Tag,                           permission: 'view-products' },
   { href: '/dashboard/inventory',      label: 'Inventory',       icon: BarChart3,                     permission: 'view-inventory' },
+  { href: '/dashboard/branches',       label: 'Branches',        icon: Building2,                     permission: 'manage-branches' },
+  { href: '/dashboard/warehouses',     label: 'Warehouses',      icon: Warehouse,                     permission: 'manage-branches' },
   { href: '/dashboard/suppliers',      label: 'Suppliers',       icon: Truck,                         permission: 'view-suppliers' },
   { href: '/dashboard/purchase-orders',label: 'Purchase Orders', icon: FileText,                      permission: 'manage-inventory' },
   { href: '/dashboard/grns',           label: 'GRNs',            icon: ClipboardCheck,                permission: 'manage-inventory' },
-  { href: '/dashboard/stock-transfers',label: 'Transfers',       icon: ArrowLeftRight,                permission: 'transfer-stock' },
+  { href: '/dashboard/stock-transfers',    label: 'Transfers',         icon: ArrowLeftRight, permission: 'transfer-stock' },
+  { href: '/dashboard/inventory/network',  label: 'Network Inventory', icon: Globe,          permission: 'view-inventory' },
+  { href: '/dashboard/transfer-requests',  label: 'Transfer Requests', icon: ArrowLeftRight, permission: 'view-inventory' },
   { href: '/dashboard/customers',      label: 'Customers',       icon: Users,                         permission: 'view-customers' },
   { href: '/dashboard/staff',          label: 'Staff',           icon: UserCog,                       permission: 'view-users' },
   { href: '/dashboard/loyalty',        label: 'Loyalty',         icon: Gift,                          permission: 'view-loyalty' },

@@ -3,6 +3,8 @@
 import {
   useEffect, useState, useCallback, useRef, useMemo, KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
+import { loadShortcuts, loadCustomShortcuts } from '@/lib/shortcuts';
+import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Search, ShoppingCart, X, Plus, Minus, Trash2, User, Tag,
@@ -34,6 +36,7 @@ import type { Sale, SaleItem, Product, Category, Customer, PaymentMethod, HoldSa
 const CART_KEY = 'pos_draft_sale_id';
 
 export default function PosPage() {
+  const router = useRouter();
   const [sale, setSale]             = useState<Sale | null>(null);
   const [saleLoading, setSaleLoading] = useState(true);
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
@@ -353,22 +356,53 @@ export default function PosPage() {
   // ── Keyboard shortcuts ───────────────────────────────────────────────────────
 
   useEffect(() => {
+    const sc      = loadShortcuts();
+    const customs = loadCustomShortcuts();
+
+    // Build full key string matching what shortcuts settings page stores
+    const pressedKey = (e: globalThis.KeyboardEvent): string => {
+      const parts: string[] = [];
+      if (e.ctrlKey)  parts.push('Ctrl');
+      if (e.altKey)   parts.push('Alt');
+      if (e.shiftKey && e.key.length > 1) parts.push('Shift');
+      parts.push(e.key);
+      return parts.join('+');
+    };
+
     const h = (e: globalThis.KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === 'F2') { e.preventDefault(); searchRef.current?.focus(); }
-      if (e.key === 'F3') { e.preventDefault(); setShowCustomer(true); }
-      if (e.key === 'F4') { e.preventDefault(); setShowDiscount(s => !s); }
-      if (e.key === 'F5') { e.preventDefault(); if (sale?.items?.length) setShowPayment(true); }
-      if (e.key === 'F8') { e.preventDefault(); loadHolds(); setShowHolds(true); }
-      if (e.key === '?')  { e.preventDefault(); setShowShortcuts(s => !s); }
+      const key = pressedKey(e);
+
+      // Built-in shortcuts
+      if (key === sc.search)   { e.preventDefault(); searchRef.current?.focus(); return; }
+      if (key === sc.customer) { e.preventDefault(); setShowCustomer(true); return; }
+      if (key === sc.discount) { e.preventDefault(); setShowDiscount(s => !s); return; }
+      if (key === sc.pay)      { e.preventDefault(); if (sale?.items?.length) setShowPayment(true); return; }
+      if (key === sc.hold)     { e.preventDefault(); loadHolds(); setShowHolds(true); return; }
+      if (key === sc.help)     { e.preventDefault(); setShowShortcuts(s => !s); return; }
       if (e.key === 'Escape') {
         setShowCustomer(false); setShowPayment(false); setShowHolds(false);
         setShowDiscount(false); setShowShortcuts(false); setEditItem(null);
+        return;
+      }
+
+      // Custom shortcuts
+      const custom = customs.find(c => c.key === key);
+      if (!custom) return;
+      e.preventDefault();
+      if (custom.action === 'add_product' && custom.product_id) {
+        addProductToCart({ id: custom.product_id, name: custom.product_name });
+        toast.success(`Added: ${custom.product_name}`);
+      }
+      if (custom.action === 'open_page' && custom.url) {
+        router.push(custom.url);
       }
     };
+
     document.addEventListener('keydown', h);
     return () => document.removeEventListener('keydown', h);
-  }, [sale]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sale, router]);
 
   // ── Computed — switch between online (server) cart and offline (IndexedDB) cart ──
 
@@ -635,7 +669,7 @@ export default function PosPage() {
             <X className="h-3.5 w-3.5" />Void
           </Button>
           <Button className="col-span-3 h-12 text-base font-bold gap-2" disabled={items.length === 0} onClick={() => setShowPayment(true)}>
-            <ShoppingCart className="h-5 w-5" />Pay — F5
+            <ShoppingCart className="h-5 w-5" />Pay — {loadShortcuts().pay}
           </Button>
         </div>
       </div>
@@ -645,18 +679,44 @@ export default function PosPage() {
         <Keyboard className="h-4 w-4" />
       </button>
       <AnimatePresence>
-        {showShortcuts && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-            className="fixed bottom-14 left-4 z-30 bg-popover border shadow-xl rounded-xl p-4 w-56">
-            <p className="font-bold text-sm mb-2">Shortcuts</p>
-            {[['F2','Search'],['F3','Customer'],['F4','Discount'],['F5','Pay'],['F8','Hold'],['Esc','Close'],['?','This']].map(([k,l]) => (
-              <div key={k} className="flex justify-between text-xs py-0.5">
-                <kbd className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">{k}</kbd>
-                <span className="text-muted-foreground">{l}</span>
-              </div>
-            ))}
-          </motion.div>
-        )}
+        {showShortcuts && (() => {
+          const sc = loadShortcuts();
+          const cs = loadCustomShortcuts();
+          return (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+              className="fixed bottom-14 left-4 z-30 bg-popover border shadow-xl rounded-xl p-4 w-64 max-h-96 overflow-y-auto">
+              <p className="font-bold text-sm mb-2">Shortcuts</p>
+              {([
+                [sc.search,   'Search'],
+                [sc.customer, 'Customer'],
+                [sc.discount, 'Discount'],
+                [sc.pay,      'Pay'],
+                [sc.hold,     'Hold'],
+                ['Esc',       'Close'],
+                [sc.help,     'This'],
+              ] as [string, string][]).map(([k, l]) => (
+                <div key={l} className="flex justify-between text-xs py-0.5">
+                  <kbd className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">{k}</kbd>
+                  <span className="text-muted-foreground">{l}</span>
+                </div>
+              ))}
+              {cs.length > 0 && (
+                <>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mt-3 mb-1">Custom</p>
+                  {cs.map(c => (
+                    <div key={c.id} className="flex justify-between text-xs py-0.5">
+                      <kbd className="font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px]">{c.key}</kbd>
+                      <span className="text-muted-foreground truncate ml-2">{c.label}</span>
+                    </div>
+                  ))}
+                </>
+              )}
+              <a href="/dashboard/settings/shortcuts" className="block mt-3 text-[10px] text-primary hover:underline">
+                Customize shortcuts →
+              </a>
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* Hold sales modal */}
