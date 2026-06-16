@@ -107,9 +107,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <ThemeProvider storageKey="dashboard_theme">
       <div className="min-h-screen bg-background flex">
       <aside className="w-64 border-r bg-card/30 backdrop-blur sticky top-0 h-screen flex flex-col">
-        <div className="p-6 border-b">
+        <div className="p-6 border-b space-y-3">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/30">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/30 flex-shrink-0">
               <Sparkles className="h-4 w-4 text-white" strokeWidth={2.5} />
             </div>
             <div className="min-w-0">
@@ -117,6 +117,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <p className="text-[10px] text-muted-foreground font-mono mt-0.5 uppercase">{user.store?.status}</p>
             </div>
           </Link>
+
+          {/* Show assigned location for branch/warehouse managers */}
+          {(user as any).branch && (
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
+              <Building2 className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Your Branch</p>
+                <p className="text-xs font-medium text-primary truncate">{(user as any).branch.name}</p>
+              </div>
+            </div>
+          )}
+          {(user as any).warehouse && (
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/20">
+              <Warehouse className="h-3.5 w-3.5 text-orange-600 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Your Warehouse</p>
+                <p className="text-xs font-medium text-orange-600 truncate">{(user as any).warehouse.name}</p>
+              </div>
+            </div>
+          )}
         </div>
 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto sidebar-scroll">

@@ -17,42 +17,62 @@ import { toast } from 'sonner';
 
 interface StaffMember {
   id: number; name: string; email: string; phone: string | null;
-  is_active: boolean; branch_id: number | null;
+  is_active: boolean; branch_id: number | null; warehouse_id: number | null;
   last_login_at: string | null; created_at: string;
   roles: { id: number; name: string; color: string; is_system: boolean }[];
 }
-interface StoreRole { id: number; name: string; color: string; description: string | null; }
+interface StoreRole    { id: number; name: string; color: string; description: string | null; }
+interface BranchOption { id: number; name: string; code: string | null; is_main: boolean; }
+interface WHOption     { id: number; name: string; code: string | null; type: string; }
 
 // ── Staff Form Modal ───────────────────────────────────────────────────────────
 
-function StaffModal({ member, roles, onClose, onSaved }: {
+// Roles that require a branch or warehouse assignment
+const BRANCH_ROLES    = ['branch-manager'];
+const WAREHOUSE_ROLES = ['warehouse-manager'];
+
+function StaffModal({ member, roles, branches, warehouses, onClose, onSaved }: {
   member: StaffMember | null; roles: StoreRole[];
+  branches: BranchOption[]; warehouses: WHOption[];
   onClose: () => void; onSaved: () => void;
 }) {
   const isNew = !member;
-  const [name,     setName]     = useState(member?.name ?? '');
-  const [email,    setEmail]    = useState(member?.email ?? '');
-  const [phone,    setPhone]    = useState(member?.phone ?? '');
-  const [password, setPassword] = useState('');
-  const [showPw,   setShowPw]   = useState(false);
-  const [roleName, setRoleName] = useState(member?.roles[0]?.name ?? 'cashier');
-  const [saving,   setSaving]   = useState(false);
+  const [name,        setName]        = useState(member?.name ?? '');
+  const [email,       setEmail]       = useState(member?.email ?? '');
+  const [phone,       setPhone]       = useState(member?.phone ?? '');
+  const [password,    setPassword]    = useState('');
+  const [showPw,      setShowPw]      = useState(false);
+  const [roleName,    setRoleName]    = useState(member?.roles[0]?.name ?? 'cashier');
+  const [branchId,    setBranchId]    = useState<string>(String(member?.branch_id ?? ''));
+  const [warehouseId, setWarehouseId] = useState<string>(String(member?.warehouse_id ?? ''));
+  const [saving,      setSaving]      = useState(false);
+
+  const needsBranch    = BRANCH_ROLES.includes(roleName);
+  const needsWarehouse = WAREHOUSE_ROLES.includes(roleName);
 
   const handleSave = async () => {
     if (!name.trim()) return toast.error('Name is required.');
     if (isNew && !email.trim()) return toast.error('Email is required.');
     if (isNew && !password) return toast.error('Password is required for new staff.');
+    if (needsBranch    && !branchId)    return toast.error('Assign a branch for this role.');
+    if (needsWarehouse && !warehouseId) return toast.error('Assign a warehouse for this role.');
     setSaving(true);
     try {
+      const payload: Record<string, any> = {
+        name,
+        phone:        phone || undefined,
+        role_name:    roleName,
+        branch_id:    needsBranch    ? parseInt(branchId)    : null,
+        warehouse_id: needsWarehouse ? parseInt(warehouseId) : null,
+      };
       if (isNew) {
-        await apiClient.post('/store/staff', { name, email, phone: phone||undefined, password, role_name: roleName });
+        payload.email    = email;
+        payload.password = password;
+        await apiClient.post('/store/staff', payload);
         toast.success('Staff member created.');
       } else {
-        await apiClient.put(`/store/staff/${member!.id}`, {
-          name, phone: phone||undefined,
-          password: password||undefined,
-          role_name: roleName,
-        });
+        if (password) payload.password = password;
+        await apiClient.put(`/store/staff/${member!.id}`, payload);
         toast.success('Staff member updated.');
       }
       onSaved();
@@ -93,6 +113,41 @@ function StaffModal({ member, roles, onClose, onSaved }: {
               ))}
             </select>
           </div>
+
+          {/* Branch assignment — required for branch-manager */}
+          {needsBranch && (
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label className="flex items-center gap-1.5">
+                Assigned Branch <span className="text-destructive">*</span>
+                <span className="text-xs text-muted-foreground font-normal">— this manager will only see this branch</span>
+              </Label>
+              <select value={branchId} onChange={e=>setBranchId(e.target.value)}
+                className="w-full h-9 rounded-md border bg-background px-3 text-sm">
+                <option value="">— Select branch —</option>
+                {branches.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}{b.is_main ? ' ★' : ''}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Warehouse assignment — required for warehouse-manager */}
+          {needsWarehouse && (
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label className="flex items-center gap-1.5">
+                Assigned Warehouse <span className="text-destructive">*</span>
+                <span className="text-xs text-muted-foreground font-normal">— this manager will only see this warehouse</span>
+              </Label>
+              <select value={warehouseId} onChange={e=>setWarehouseId(e.target.value)}
+                className="w-full h-9 rounded-md border bg-background px-3 text-sm">
+                <option value="">— Select warehouse —</option>
+                {warehouses.map(w => (
+                  <option key={w.id} value={w.id}>{w.name} <span className="text-muted-foreground">({w.type.replace('_',' ')})</span></option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="space-y-1.5 sm:col-span-2">
             <Label>{isNew ? 'Password *' : 'New Password (leave blank to keep)'}</Label>
             <div className="relative">
@@ -123,23 +178,29 @@ function StaffModal({ member, roles, onClose, onSaved }: {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function StaffPage() {
-  const [staff,   setStaff]   = useState<StaffMember[]>([]);
-  const [roles,   setRoles]   = useState<StoreRole[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search,  setSearch]  = useState('');
-  const [editing, setEditing] = useState<StaffMember | null | 'new'>('new' as any);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [staff,      setStaff]      = useState<StaffMember[]>([]);
+  const [roles,      setRoles]      = useState<StoreRole[]>([]);
+  const [branches,   setBranches]   = useState<BranchOption[]>([]);
+  const [warehouses, setWarehouses] = useState<WHOption[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [search,     setSearch]     = useState('');
+  const [editing,    setEditing]    = useState<StaffMember | null | 'new'>('new' as any);
+  const [modalOpen,  setModalOpen]  = useState(false);
   const [deactivating, setDeactivating] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [staffRes, rolesRes] = await Promise.all([
+      const [staffRes, rolesRes, brRes, whRes] = await Promise.all([
         apiClient.get('/store/staff'),
         apiClient.get('/store/roles'),
+        apiClient.get('/store/branches'),
+        apiClient.get('/store/warehouses'),
       ]);
       setStaff((staffRes.data as any)?.staff ?? []);
       setRoles((rolesRes.data as any)?.roles ?? []);
+      setBranches((brRes.data as any)?.branches ?? []);
+      setWarehouses((whRes.data as any)?.warehouses ?? []);
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setLoading(false); }
   }, []);
@@ -282,6 +343,8 @@ export default function StaffPage() {
         <StaffModal
           member={editing as StaffMember | null}
           roles={roles}
+          branches={branches}
+          warehouses={warehouses}
           onClose={() => setModalOpen(false)}
           onSaved={() => { setModalOpen(false); load(); }}
         />
