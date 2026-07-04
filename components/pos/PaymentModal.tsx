@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, Plus, Trash2, Loader2, DollarSign, WifiOff } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { cn } from '@/lib/utils';
 import { OFFLINE_BLOCKED_METHODS, type OfflinePayment } from '@/lib/offline/offline-sale';
 import type { PaymentMethod, Sale } from '@/types';
@@ -53,6 +54,9 @@ export default function PaymentModal({ sale, onPay, offlineTotal, onPayOffline, 
 
   const [rows,   setRows]   = useState<PaymentRow[]>([{ method: 'cash', amount: remaining.toFixed(2), reference: '' }]);
   const [paying, setPaying] = useState(false);
+  const modalRef       = useRef<HTMLDivElement>(null);
+  const amountInputRef = useRef<HTMLInputElement>(null);
+  useFocusTrap(modalRef, true, amountInputRef);
 
   const totalEntered = rows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
   const change       = Math.max(0, totalEntered - remaining);
@@ -87,7 +91,7 @@ export default function PaymentModal({ sale, onPay, offlineTotal, onPayOffline, 
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+      <motion.div ref={modalRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }} className="relative z-10 w-full max-w-md">
         <Card className="shadow-2xl overflow-hidden">
 
@@ -151,7 +155,9 @@ export default function PaymentModal({ sale, onPay, offlineTotal, onPayOffline, 
                       ))}
                     </select>
                     <Input type="number" value={row.amount} min="0" step="0.01"
+                      ref={i === 0 ? amountInputRef : undefined}
                       onChange={e => updateRow(i, 'amount', e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && canComplete && !paying) handlePay(); }}
                       className="flex-1 h-9 font-mono text-right" placeholder="0.00" />
                     {rows.length > 1 && (
                       <button onClick={() => removeRow(i)} className="text-destructive/60 hover:text-destructive flex-shrink-0">

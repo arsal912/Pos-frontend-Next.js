@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { apiClient, getErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useOfflineCustomers, isStale, staleLabel } from '@/lib/offline/hooks';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -31,9 +32,11 @@ export default function CustomerModal({ onSelect, onClose }: Props) {
   const [newPhone,  setNewPhone]  = useState('');
   const [creating,  setCreating]  = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
   useEffect(() => { inputRef.current?.focus(); }, []);
+  useFocusTrap(modalRef);
 
   // Offline-first customer search from IndexedDB
   const offlineResults = useOfflineCustomers(storeId, search.trim(), 30);
@@ -77,7 +80,7 @@ export default function CustomerModal({ onSelect, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
+      <motion.div ref={modalRef} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }} className="relative z-10 w-full max-w-md">
         <Card className="shadow-2xl">
           <div className="p-4 border-b flex items-center gap-3">

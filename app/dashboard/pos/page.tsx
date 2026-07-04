@@ -4,6 +4,7 @@ import {
   useEffect, useState, useCallback, useRef, useMemo, KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { loadShortcuts, loadCustomShortcuts } from '@/lib/shortcuts';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -73,6 +74,15 @@ export default function PosPage() {
   const lastKeyTime   = useRef(0);
   const barcodeBuffer = useRef('');
   const SCAN_THRESHOLD = 100;
+
+  const holdsModalRef  = useRef<HTMLDivElement>(null);
+  const redeemModalRef = useRef<HTMLDivElement>(null);
+  const pageRef        = useRef<HTMLDivElement>(null);
+  useFocusTrap(holdsModalRef, showHolds);
+  useFocusTrap(redeemModalRef, showRedeem);
+  // Keeps Tab cycling within the POS work area only — never into the dashboard
+  // sidebar and never out to the browser chrome (address bar, extensions, etc).
+  useFocusTrap(pageRef, !saleLoading);
 
   // Phase 6 — device registry + offline sync
   const user    = useAuthStore(s => s.user);
@@ -370,6 +380,17 @@ export default function PosPage() {
     };
 
     const h = (e: globalThis.KeyboardEvent) => {
+      // Escape must always close whatever's open, even while typing in a
+      // search/amount/reason field — that's where focus sits most of the time.
+      if (e.key === 'Escape') {
+        setShowCustomer(false); setShowPayment(false); setShowHolds(false);
+        setShowDiscount(false); setShowShortcuts(false); setShowRedeem(false);
+        setEditItem(null);
+        // Return focus to the scanner input so keyboard-only flow can continue.
+        setTimeout(() => searchRef.current?.focus(), 0);
+        return;
+      }
+
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       const key = pressedKey(e);
 
@@ -380,11 +401,6 @@ export default function PosPage() {
       if (key === sc.pay)      { e.preventDefault(); if (sale?.items?.length) setShowPayment(true); return; }
       if (key === sc.hold)     { e.preventDefault(); loadHolds(); setShowHolds(true); return; }
       if (key === sc.help)     { e.preventDefault(); setShowShortcuts(s => !s); return; }
-      if (e.key === 'Escape') {
-        setShowCustomer(false); setShowPayment(false); setShowHolds(false);
-        setShowDiscount(false); setShowShortcuts(false); setEditItem(null);
-        return;
-      }
 
       // Custom shortcuts
       const custom = customs.find(c => c.key === key);
@@ -399,8 +415,11 @@ export default function PosPage() {
       }
     };
 
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
+    // Scoped to the POS work area only — a keystroke made while focus is in the
+    // dashboard sidebar (or anywhere else outside this page) must not trigger these.
+    const container = pageRef.current;
+    container?.addEventListener('keydown', h);
+    return () => container?.removeEventListener('keydown', h);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sale, router]);
 
@@ -420,7 +439,7 @@ export default function PosPage() {
   if (saleLoading) return <div className="h-full flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
   return (
-    <div className="relative h-[calc(100vh-2rem)] flex gap-4 overflow-hidden -m-6 md:-m-10 p-3">
+    <div ref={pageRef} className="relative h-[calc(100vh-2rem)] flex gap-4 overflow-hidden -m-6 md:-m-10 p-3">
 
       {/* ── SW update banner (edge case J) ────────────────────────────────── */}
       {updateAvailable && (
@@ -724,7 +743,7 @@ export default function PosPage() {
         {showHolds && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowHolds(false)} />
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative z-10 w-full max-w-md">
+            <motion.div ref={holdsModalRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative z-10 w-full max-w-md">
               <Card className="p-5">
                 <div className="flex items-center justify-between mb-4"><h2 className="font-display font-bold text-lg">Parked Sales</h2><button onClick={() => setShowHolds(false)} className="text-muted-foreground"><X className="h-4 w-4" /></button></div>
                 {items.length > 0 && (
@@ -780,7 +799,7 @@ export default function PosPage() {
         {showRedeem && customer && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={()=>setShowRedeem(false)}/>
-            <motion.div initial={{opacity:0,scale:0.95}} animate={{opacity:1,scale:1}} exit={{opacity:0,scale:0.95}} className="relative z-10 w-full max-w-sm">
+            <motion.div ref={redeemModalRef} initial={{opacity:0,scale:0.95}} animate={{opacity:1,scale:1}} exit={{opacity:0,scale:0.95}} className="relative z-10 w-full max-w-sm">
               <Card className="p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Gift className="h-5 w-5 text-success"/>
