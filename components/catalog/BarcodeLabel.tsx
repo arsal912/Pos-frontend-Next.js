@@ -20,8 +20,8 @@ export interface BarcodeLabelData {
  */
 export function BarcodeLabel({ label, currency = 'USD' }: { label: BarcodeLabelData; currency?: string }) {
   return (
-    <div className="border rounded p-3 text-center flex flex-col items-center gap-1 print:border-gray-300 print:rounded-none overflow-hidden">
-      <p className="text-[10px] font-medium truncate w-full">{label.name}</p>
+    <div className="border rounded p-3 print:p-2 text-center flex flex-col items-center gap-1 print:gap-0.5 print:border-gray-300 print:rounded-none overflow-hidden break-inside-avoid">
+      <p className="text-[10px] print:text-[11px] font-medium truncate print:whitespace-normal print:overflow-visible w-full leading-tight">{label.name}</p>
       {label.svg ? (
         <div className="w-full [&_svg]:mx-auto [&_svg]:max-w-full" dangerouslySetInnerHTML={{ __html: label.svg }} />
       ) : (

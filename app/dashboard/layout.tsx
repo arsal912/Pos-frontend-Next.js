@@ -108,7 +108,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <ThemeProvider storageKey="dashboard_theme">
       <div className="min-h-screen bg-background flex">
-      <aside className="w-64 border-r bg-card/30 backdrop-blur sticky top-0 h-screen flex flex-col">
+      <aside className="w-64 border-r bg-card/30 backdrop-blur sticky top-0 h-screen flex flex-col print:hidden">
         <div className="p-6 border-b space-y-3">
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/30 flex-shrink-0">
@@ -212,8 +212,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      <main className="flex-1 overflow-x-hidden">
-        <div className="p-6 md:p-10 max-w-7xl mx-auto">
+      <main className="flex-1 overflow-x-hidden print:overflow-visible">
+        <div className="p-6 md:p-10 max-w-7xl mx-auto print:p-0 print:max-w-none">
           <OfflineGuard>{children}</OfflineGuard>
         </div>
       </main>

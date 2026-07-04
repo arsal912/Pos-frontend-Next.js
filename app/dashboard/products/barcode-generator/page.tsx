@@ -7,6 +7,7 @@ import { ArrowLeft, Search, Package, Loader2, Printer, Barcode as BarcodeIcon, X
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { apiClient, getItems, getErrorMessage } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -53,8 +54,21 @@ export default function BarcodeGeneratorPage() {
     setSelected((prev) => ({ ...prev, [id]: Math.max(1, qty || 1) }));
   };
 
+  // "Default qty" only seeds newly-checked rows — it doesn't retroactively
+  // change ones already selected, which reads as "my quantity didn't apply"
+  // if you set it after selecting. This applies it to everything currently checked.
+  const applyQtyToAllSelected = () => {
+    setSelected((prev) => {
+      const next: Record<number, number> = {};
+      for (const id of Object.keys(prev)) next[Number(id)] = defaultQty;
+      return next;
+    });
+  };
+
   const selectedIds = Object.keys(selected).map(Number);
   const totalLabels = Object.values(selected).reduce((s, q) => s + q, 0);
+  // Only counts products currently in view — good enough as a heads-up, not a hard guarantee.
+  const newBarcodeCount = products.filter((p) => p.id in selected && !p.barcode).length;
 
   const generate = async () => {
     if (selectedIds.length === 0) return toast.error('Select at least one product.');
@@ -81,7 +95,7 @@ export default function BarcodeGeneratorPage() {
           <Button variant="ghost" size="sm" asChild><Link href="/dashboard/products"><ArrowLeft className="h-4 w-4" /></Link></Button>
           <div>
             <h1 className="font-display text-3xl font-bold tracking-tight flex items-center gap-2"><BarcodeIcon className="h-6 w-6 text-primary" />Barcode Generator</h1>
-            <p className="text-muted-foreground mt-1">Select multiple products and print real, scannable barcode labels at once</p>
+            <p className="text-muted-foreground mt-1">Select multiple products and print scannable labels. Products without a barcode yet get one created automatically.</p>
           </div>
         </div>
       </div>
@@ -115,6 +129,9 @@ export default function BarcodeGeneratorPage() {
                       <p className="text-sm font-medium truncate">{p.name}</p>
                       <p className="text-xs text-muted-foreground font-mono">{p.sku}{p.barcode ? ` · ${p.barcode}` : ''}</p>
                     </div>
+                    {!p.barcode && (
+                      <Badge variant="outline" className="text-[10px] flex-shrink-0">will create</Badge>
+                    )}
                     {isSelected && (
                       <input type="number" min={1} value={selected[p.id]}
                         onClick={(e) => e.stopPropagation()}
@@ -139,15 +156,26 @@ export default function BarcodeGeneratorPage() {
             )}
           </div>
 
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-4 text-sm flex-wrap">
             <div><span className="font-bold">{selectedIds.length}</span> <span className="text-muted-foreground">products</span></div>
             <div><span className="font-bold">{totalLabels}</span> <span className="text-muted-foreground">labels total</span></div>
+            {newBarcodeCount > 0 && (
+              <div className="text-warning-foreground">
+                <span className="font-bold">{newBarcodeCount}</span> <span className="text-muted-foreground">will get a new barcode created</span>
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-3">
-            <label className="text-sm text-muted-foreground">Default qty for new selections</label>
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="text-sm text-muted-foreground">Qty for new selections</label>
             <input type="number" min={1} value={defaultQty} onChange={(e) => setDefaultQty(Math.max(1, parseInt(e.target.value) || 1))}
               className="w-20 h-9 rounded-md border bg-background px-2 text-sm" />
+            {selectedIds.length > 0 && (
+              <button type="button" onClick={applyQtyToAllSelected}
+                className="text-xs text-primary hover:underline">
+                Apply to all {selectedIds.length} selected
+              </button>
+            )}
           </div>
 
           <Button onClick={generate} disabled={generating || selectedIds.length === 0} className="w-full gap-2">
@@ -169,7 +197,7 @@ export default function BarcodeGeneratorPage() {
 
       {/* Printable label sheet */}
       {labels && labels.length > 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-4 gap-3 print:grid-cols-5 print:gap-1">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-4 gap-3 print:grid-cols-3 print:gap-2">
           {labels.map((label, i) => (
             <BarcodeLabel key={`${label.product_id}-${i}`} label={label} currency={currency} />
           ))}
@@ -178,6 +206,7 @@ export default function BarcodeGeneratorPage() {
 
       <style>{`
         @media print {
+          @page { margin: 10mm; }
           .print\\:hidden { display: none !important; }
         }
       `}</style>

@@ -54,7 +54,7 @@ export default function PrintBarcodePage({ params }: { params: { id: string } })
       </Card>
 
       {/* Real, scannable barcode grid — rendered server-side by milon/barcode */}
-      <div className="grid grid-cols-4 gap-3 print:grid-cols-5 print:gap-1">
+      <div className="grid grid-cols-4 gap-3 print:grid-cols-3 print:gap-2">
         {Array.from({ length: qty }).map((_, i) => (
           <BarcodeLabel key={i} label={label} currency={currency} />
         ))}
@@ -62,7 +62,7 @@ export default function PrintBarcodePage({ params }: { params: { id: string } })
 
       <style>{`
         @media print {
-          body > *:not(.print-area) { display: none; }
+          @page { margin: 10mm; }
           .print\\:hidden { display: none !important; }
         }
       `}</style>
