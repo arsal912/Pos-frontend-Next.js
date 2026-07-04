@@ -40,7 +40,8 @@ export default function StoreDashboardPage() {
     Promise.all([
       apiClient.post('/store/reports/sales-summary/run', { date_range: 'today' }).catch(() => null),
       apiClient.post('/store/reports/stock-on-hand/run', { status: 'low' }).catch(() => null),
-    ]).then(([salesRes, stockRes]) => {
+      apiClient.get('/store/customers', { per_page: 1 }).catch(() => null),
+    ]).then(([salesRes, stockRes, customersRes]) => {
       if (salesRes) {
         const summary: any[] = (salesRes.data as any)?.summary ?? [];
         const find = (label: string) => summary.find((c: any) => c.label === label)?.raw ?? 0;
@@ -53,6 +54,10 @@ export default function StoreDashboardPage() {
       if (stockRes) {
         const meta = (stockRes.data as any)?.meta ?? {};
         setStats(s => ({ ...s, low_stock_count: meta.row_count ?? 0 }));
+      }
+      if (customersRes) {
+        const total = (customersRes as any).meta?.pagination?.total ?? 0;
+        setStats(s => ({ ...s, total_customers: total }));
       }
     }).finally(() => setLoading(false));
   }, []);
