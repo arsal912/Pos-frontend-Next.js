@@ -13,7 +13,27 @@ import {
   LogOut,
   Sparkles,
   Loader2,
+  CreditCard,
+  AlertTriangle,
+  Tag,
+  Layers,
+  Truck,
+  FileText,
+  ClipboardCheck,
+  ArrowLeftRight,
+  Globe,
+  Vault,
+  Gift,
+  BadgeDollarSign,
+  MessageSquare,
+  Send,
+  UserCog,
+  Receipt,
+  Building2,
+  Warehouse,
 } from 'lucide-react';
+import { OfflineGuard } from '@/components/pos/OfflineGuard';
+import { ThemeProvider } from '@/components/ui/ThemeProvider';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/auth';
@@ -22,12 +42,30 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { href: '/dashboard/pos', label: 'POS Sales', icon: ShoppingCart },
-  { href: '/dashboard/products', label: 'Products', icon: Package },
-  { href: '/dashboard/customers', label: 'Customers', icon: Users },
-  { href: '/dashboard/reports', label: 'Reports', icon: BarChart3 },
-  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+  { href: '/dashboard',                label: 'Dashboard',       icon: LayoutDashboard, exact: true,  permission: null },
+  { href: '/dashboard/pos',            label: 'POS Sales',       icon: ShoppingCart,                  permission: 'create-sales' },
+  { href: '/dashboard/products',       label: 'Products',        icon: Package,                       permission: 'view-products' },
+  { href: '/dashboard/categories',     label: 'Categories',      icon: Layers,                        permission: 'view-products' },
+  { href: '/dashboard/brands',         label: 'Brands',          icon: Tag,                           permission: 'view-products' },
+  { href: '/dashboard/inventory',      label: 'Inventory',       icon: BarChart3,                     permission: 'view-inventory' },
+  { href: '/dashboard/branches',       label: 'Branches',        icon: Building2,                     permission: 'manage-branches' },
+  { href: '/dashboard/warehouses',     label: 'Warehouses',      icon: Warehouse,                     permission: 'manage-branches' },
+  { href: '/dashboard/suppliers',      label: 'Suppliers',       icon: Truck,                         permission: 'view-suppliers' },
+  { href: '/dashboard/purchase-orders',label: 'Purchase Orders', icon: FileText,                      permission: 'manage-inventory' },
+  { href: '/dashboard/grns',           label: 'GRNs',            icon: ClipboardCheck,                permission: 'manage-inventory' },
+  { href: '/dashboard/stock-transfers',    label: 'Stock Transfers',   icon: ArrowLeftRight, permission: 'transfer-stock' },
+  { href: '/dashboard/customers',      label: 'Customers',       icon: Users,                         permission: 'view-customers' },
+  { href: '/dashboard/staff',          label: 'Staff',           icon: UserCog,                       permission: 'view-users' },
+  { href: '/dashboard/loyalty',        label: 'Loyalty',         icon: Gift,                          permission: 'view-loyalty' },
+  { href: '/dashboard/credit',         label: 'Credit',          icon: BadgeDollarSign,               permission: 'manage-customer-credit' },
+  { href: '/dashboard/cash-drawer',         label: 'Cash Drawer',  icon: Vault,                      permission: 'create-sales' },
+  { href: '/dashboard/expenses',            label: 'Expenses',     icon: Receipt,                    permission: 'manage-expenses' },
+  { href: '/dashboard/pos/sync-conflicts',  label: 'Sync Conflicts', icon: AlertTriangle,            permission: 'create-sales' },
+  { href: '/dashboard/communications/campaigns',  label: 'Campaigns',  icon: Send,                  permission: 'send-customer-communication' },
+  { href: '/dashboard/communications/templates', label: 'Templates',  icon: MessageSquare,           permission: 'send-customer-communication' },
+  { href: '/dashboard/reports',        label: 'Reports',         icon: BarChart3,                     permission: 'view-reports' },
+  { href: '/dashboard/billing',        label: 'Billing',         icon: CreditCard,                    permission: null },
+  { href: '/dashboard/settings',       label: 'Settings',        icon: Settings,                      permission: 'manage-settings' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -67,11 +105,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <ThemeProvider storageKey="dashboard_theme">
+      <div className="min-h-screen bg-background flex">
       <aside className="w-64 border-r bg-card/30 backdrop-blur sticky top-0 h-screen flex flex-col">
-        <div className="p-6 border-b">
+        <div className="p-6 border-b space-y-3">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/30">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/30 flex-shrink-0">
               <Sparkles className="h-4 w-4 text-white" strokeWidth={2.5} />
             </div>
             <div className="min-w-0">
@@ -79,10 +118,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <p className="text-[10px] text-muted-foreground font-mono mt-0.5 uppercase">{user.store?.status}</p>
             </div>
           </Link>
+
+          {/* Show assigned location for branch/warehouse managers */}
+          {(user as any).branch && (
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
+              <Building2 className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Your Branch</p>
+                <p className="text-xs font-medium text-primary truncate">{(user as any).branch.name}</p>
+              </div>
+            </div>
+          )}
+          {(user as any).warehouse && (
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/20">
+              <Warehouse className="h-3.5 w-3.5 text-orange-600 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Your Warehouse</p>
+                <p className="text-xs font-medium text-orange-600 truncate">{(user as any).warehouse.name}</p>
+              </div>
+            </div>
+          )}
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
-          {NAV_ITEMS.map((item) => {
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto sidebar-scroll">
+          {NAV_ITEMS.filter(item => {
+            if (!item.permission) return true;
+            if (user?.roles?.includes('store-owner')) return true;
+            return user?.permissions?.includes(item.permission) ?? false;
+          }).map((item) => {
             const isActive = item.exact ? pathname === item.href : pathname?.startsWith(item.href);
             const Icon = item.icon;
             return (
@@ -103,12 +166,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           })}
         </nav>
 
-        {user.store?.trial_ends_at && (
+        {/* Subscription status banners */}
+        {user.store?.status === 'expired' && (
+          <div className="m-3 p-3 rounded-lg border bg-destructive/10 border-destructive/30 text-xs">
+            <p className="font-semibold text-destructive flex items-center gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5" /> Subscription expired
+            </p>
+            <Link href="/dashboard/billing" className="text-primary underline mt-1 block">
+              Reactivate now →
+            </Link>
+          </div>
+        )}
+        {user.store?.status !== 'expired' && user.store?.trial_ends_at && (
           <div className="m-3 p-3 rounded-lg border bg-warning/10 border-warning/30 text-xs">
             <p className="font-semibold flex items-center gap-1.5"><Badge variant="warning">TRIAL</Badge></p>
             <p className="text-muted-foreground mt-1">
               Ends {new Date(user.store.trial_ends_at).toLocaleDateString()}
             </p>
+            <Link href="/dashboard/billing" className="text-primary underline mt-1 block">
+              Upgrade now →
+            </Link>
           </div>
         )}
 
@@ -127,9 +204,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main className="flex-1 overflow-x-hidden">
         <div className="p-6 md:p-10 max-w-7xl mx-auto">
           <VerificationBanner />
-          {children}
+          <OfflineGuard>{children}</OfflineGuard>
         </div>
       </main>
-    </div>
+      </div>
+    </ThemeProvider>
   );
 }

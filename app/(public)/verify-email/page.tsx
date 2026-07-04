@@ -7,8 +7,9 @@ import { CheckCircle2, AlertTriangle, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { apiClient, getErrorMessage } from '@/lib/api';
 import { toast } from 'sonner';
+import { SearchParamsBoundary } from '@/components/ui/SearchParamsBoundary';
 
-export default function VerifyEmailPage() {
+function VerifyEmailPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get('token');
@@ -71,5 +72,13 @@ export default function VerifyEmailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <SearchParamsBoundary>
+      <VerifyEmailPageContent />
+    </SearchParamsBoundary>
   );
 }

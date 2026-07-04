@@ -9,11 +9,12 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SearchParamsBoundary } from '@/components/ui/SearchParamsBoundary';
 import { apiClient, getErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import type { User } from '@/types';
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -144,5 +145,13 @@ export default function LoginPage() {
         </p>
       </motion.div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <SearchParamsBoundary>
+      <LoginPageContent />
+    </SearchParamsBoundary>
   );
 }

@@ -14,6 +14,10 @@ export const api: AxiosInstance = axios.create({
   withCredentials: false,
 });
 
+// Token stored in localStorage. Risk: accessible to XSS. Mitigation: strict CSP headers
+// prevent inline scripts; all user input is escaped. Migration path: httpOnly cookies
+// (requires backend session changes) deferred to post-launch security hardening.
+
 // Attach token to every request
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (typeof window !== 'undefined') {
@@ -29,14 +33,26 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError<any>) => {
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
-      // Token expired/invalid - clear and redirect to login
+    if (typeof window === 'undefined') return Promise.reject(error);
+
+    if (error.response?.status === 401) {
+      // Token expired/invalid — clear and redirect to login
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_user');
       if (!window.location.pathname.startsWith('/login')) {
         window.location.href = '/login';
       }
     }
+
+    if (error.response?.status === 402) {
+      // Subscription expired — redirect to billing reactivation page
+      // Only redirect if we're inside the dashboard (not already on billing)
+      const path = window.location.pathname;
+      if (path.startsWith('/dashboard') && !path.startsWith('/dashboard/billing')) {
+        window.location.href = '/dashboard/billing?reactivate=true';
+      }
+    }
+
     return Promise.reject(error);
   }
 );
@@ -95,3 +111,16 @@ export const apiClient = {
     return data;
   },
 };
+
+/**
+ * Safely extract items from a paginated API response.
+ *
+ * Handles both response shapes:
+ *   - Flat:   { data: [...items], meta: { pagination } }   ← paginatedResponse() in ApiResponse trait
+ *   - Nested: { data: { data: [...items], ... } }           ← legacy / some controllers
+ */
+export function getItems<T = any>(res: ApiResponse<any>): T[] {
+  if (Array.isArray(res.data)) return res.data as T[];
+  if (res.data && Array.isArray((res.data as any).data)) return (res.data as any).data as T[];
+  return [];
+}

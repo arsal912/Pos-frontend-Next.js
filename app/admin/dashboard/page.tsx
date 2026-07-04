@@ -2,11 +2,22 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Store, Users, DollarSign, AlertCircle, TrendingUp, Clock } from 'lucide-react';
+import {
+  Store, Users, DollarSign, AlertCircle, TrendingUp, Clock, XCircle,
+  CalendarClock, ShoppingCart, Package, UserCheck, BarChart3,
+} from 'lucide-react';
+import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { apiClient } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatRelativeTime } from '@/lib/utils';
+
+interface TopStore {
+  store_name: string;
+  today_revenue: number;
+  month_revenue: number;
+  sales_today: number;
+}
 
 interface DashboardData {
   stats: {
@@ -19,9 +30,23 @@ interface DashboardData {
     today_revenue: number;
     expiring_soon: number;
     new_stores_this_month: number;
+    subscriptions_expiring_7d: number;
+    platform_sales_today: number;
+    platform_sales_month_count: number;
+    platform_total_products: number;
+    platform_total_customers: number;
+    low_stock_stores: number;
+    central_payments: {
+      total: number;
+      completed_revenue: number;
+      pending: number;
+      failed: number;
+      failed_7d: number;
+    };
   };
   recent_errors: any[];
   recent_stores: any[];
+  top_stores_by_revenue: TopStore[];
 }
 
 export default function AdminDashboardPage() {
@@ -41,11 +66,40 @@ export default function AdminDashboardPage() {
 
   if (!data) return null;
 
+  const failed7d   = data.stats.central_payments?.failed_7d ?? 0;
+  const expiring7d = data.stats.subscriptions_expiring_7d ?? 0;
+
   const stats = [
-    { label: 'Total Stores', value: data.stats.total_stores, icon: Store, color: 'from-primary/20 to-primary/5', iconColor: 'text-primary' },
-    { label: 'Active Stores', value: data.stats.active_stores, icon: TrendingUp, color: 'from-success/20 to-success/5', iconColor: 'text-success' },
-    { label: 'Total Users', value: data.stats.total_users, icon: Users, color: 'from-accent/20 to-accent/5', iconColor: 'text-accent' },
-    { label: 'Month Revenue', value: formatCurrency(data.stats.month_revenue), icon: DollarSign, color: 'from-warning/20 to-warning/5', iconColor: 'text-warning-foreground' },
+    { label: 'Total Stores',        value: data.stats.total_stores,                              icon: Store,         color: 'from-primary/20 to-primary/5',        iconColor: 'text-primary',            href: '/admin/stores' },
+    { label: 'Active Stores',       value: data.stats.active_stores,                             icon: TrendingUp,    color: 'from-success/20 to-success/5',        iconColor: 'text-success',            href: '/admin/stores' },
+    { label: 'Sales Today',         value: formatCurrency(data.stats.platform_sales_today ?? 0), icon: ShoppingCart,  color: 'from-accent/20 to-accent/5',          iconColor: 'text-accent',             href: null },
+    { label: 'Month Revenue',       value: formatCurrency(data.stats.month_revenue),             icon: DollarSign,    color: 'from-warning/20 to-warning/5',        iconColor: 'text-warning-foreground', href: '/admin/payments' },
+    { label: 'Platform Customers',  value: (data.stats.platform_total_customers ?? 0).toLocaleString(), icon: UserCheck, color: 'from-primary/10 to-primary/5',   iconColor: 'text-primary',            href: null },
+    { label: 'Total Products',      value: (data.stats.platform_total_products ?? 0).toLocaleString(),  icon: Package,   color: 'from-muted/40 to-muted/20',      iconColor: 'text-muted-foreground',   href: null },
+    {
+      label: 'Failed Payments (7d)',
+      value: failed7d,
+      icon: XCircle,
+      color: failed7d > 0 ? 'from-destructive/20 to-destructive/5' : 'from-muted/40 to-muted/20',
+      iconColor: failed7d > 0 ? 'text-destructive' : 'text-muted-foreground',
+      href: '/admin/payments?status=failed',
+    },
+    {
+      label: 'Expiring Subs (7d)',
+      value: expiring7d,
+      icon: CalendarClock,
+      color: expiring7d > 0 ? 'from-warning/20 to-warning/5' : 'from-muted/40 to-muted/20',
+      iconColor: expiring7d > 0 ? 'text-warning-foreground' : 'text-muted-foreground',
+      href: '/admin/subscriptions?expiring_days=7',
+    },
+    {
+      label: 'Low-Stock Stores',
+      value: data.stats.low_stock_stores ?? 0,
+      icon: BarChart3,
+      color: (data.stats.low_stock_stores ?? 0) > 0 ? 'from-destructive/20 to-destructive/5' : 'from-muted/40 to-muted/20',
+      iconColor: (data.stats.low_stock_stores ?? 0) > 0 ? 'text-destructive' : 'text-muted-foreground',
+      href: null,
+    },
   ];
 
   return (
@@ -55,15 +109,10 @@ export default function AdminDashboardPage() {
         <p className="text-muted-foreground mt-1">Platform overview and key metrics</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-          >
-            <Card className={`p-5 bg-gradient-to-br ${stat.color} border-0 relative overflow-hidden`}>
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {stats.map((stat, i) => {
+          const CardContent = (
+            <Card className={`p-5 bg-gradient-to-br ${stat.color} border-0 relative overflow-hidden h-full ${stat.href ? 'hover:opacity-90 transition-opacity cursor-pointer' : ''}`}>
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{stat.label}</p>
@@ -74,8 +123,13 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
             </Card>
-          </motion.div>
-        ))}
+          );
+          return (
+            <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+              {stat.href ? <Link href={stat.href}>{CardContent}</Link> : CardContent}
+            </motion.div>
+          );
+        })}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
@@ -127,6 +181,28 @@ export default function AdminDashboardPage() {
           )}
         </Card>
       </div>
+
+      {/* Top stores by revenue */}
+      {(data.top_stores_by_revenue ?? []).length > 0 && (
+        <Card className="p-6">
+          <h3 className="font-display text-lg font-bold mb-4">Top Stores by Today's Revenue</h3>
+          <div className="space-y-2">
+            {data.top_stores_by_revenue.map((s, i) => (
+              <div key={i} className="flex items-center gap-4 py-2.5 border-b last:border-0">
+                <span className="text-muted-foreground text-sm w-5 flex-shrink-0">{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{s.store_name ?? 'Unknown'}</p>
+                  <p className="text-xs text-muted-foreground">{s.sales_today} sales today</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="font-mono font-bold text-sm text-primary">{formatCurrency(s.today_revenue)}</p>
+                  <p className="text-xs text-muted-foreground">month: {formatCurrency(s.month_revenue)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {data.recent_errors.length > 0 && (
         <Card className="p-6 border-destructive/30 bg-destructive/5">
