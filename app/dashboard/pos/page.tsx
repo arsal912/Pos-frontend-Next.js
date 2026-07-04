@@ -555,7 +555,7 @@ export default function PosPage() {
                     <CreditCard className="h-2.5 w-2.5" />{Number(customer.outstanding_balance).toFixed(2)} owed
                   </span>
                 )}
-                {customer.group && (
+                {customer && 'group' in customer && customer.group && (
                   <span className="text-[10px] px-1.5 rounded-full font-medium"
                     style={{background:customer.group.color+'20',color:customer.group.color}}>
                     {customer.group.name}

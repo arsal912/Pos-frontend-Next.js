@@ -1,7 +1,8 @@
 'use client';
+export const dynamic = 'force-dynamic';
 
 import { useState, useEffect, FormEvent } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ArrowLeft, ArrowRight, Loader2, Check, Store as StoreIcon, User as UserIcon, Tag } from 'lucide-react';
@@ -51,12 +52,13 @@ export default function RegisterPage() {
       .get<Plan[]>('/public/landing/plans')
       .then((res) => {
         setPlans(res.data);
-        const planSlug = searchParams.get('plan');
+        const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+        const planSlug = params ? params.get('plan') : null;
         const matched = planSlug ? res.data.find((p) => p.slug === planSlug) : res.data[0];
         if (matched) setForm((f) => ({ ...f, plan_id: matched.id }));
       })
       .catch(() => toast.error('Failed to load plans'));
-  }, [searchParams]);
+  }, []);
 
   const update = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [key]: value }));

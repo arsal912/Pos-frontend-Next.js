@@ -48,12 +48,22 @@ const METHOD_BADGE: Record<string, string> = {
 
 // ── Empty form state ──────────────────────────────────────────────────────────
 
-const emptyForm = () => ({
+type ExpenseFormState = {
+  expense_date: string;
+  category: string;
+  description: string;
+  amount: string;
+  payment_method: Expense['payment_method'];
+  reference: string;
+  notes: string;
+};
+
+const emptyForm = (): ExpenseFormState => ({
   expense_date:   new Date().toISOString().split('T')[0],
   category:       '',
   description:    '',
   amount:         '',
-  payment_method: 'cash' as const,
+  payment_method: 'cash',
   reference:      '',
   notes:          '',
 });
@@ -63,13 +73,13 @@ const emptyForm = () => ({
 function ExpenseForm({
   initial, categories, onSaved, onCancel, editId,
 }: {
-  initial?: ReturnType<typeof emptyForm>;
+  initial?: ExpenseFormState;
   categories: string[];
   onSaved: () => void;
   onCancel?: () => void;
   editId?: number | null;
 }) {
-  const [form,     setForm]     = useState(initial ?? emptyForm());
+  const [form,     setForm]     = useState<ExpenseFormState>(initial ?? emptyForm());
   const [saving,   setSaving]   = useState(false);
   const [catInput, setCatInput] = useState(initial?.category ?? '');
   const [showSuggestions, setShowSuggestions] = useState(false);
