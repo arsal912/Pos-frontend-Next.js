@@ -31,6 +31,7 @@ import {
   Receipt,
   Building2,
   Warehouse,
+  Barcode,
 } from 'lucide-react';
 import { OfflineGuard } from '@/components/pos/OfflineGuard';
 import { ThemeProvider } from '@/components/ui/ThemeProvider';
@@ -44,6 +45,7 @@ const NAV_ITEMS = [
   { href: '/dashboard',                label: 'Dashboard',       icon: LayoutDashboard, exact: true,  permission: null },
   { href: '/dashboard/pos',            label: 'POS Sales',       icon: ShoppingCart,                  permission: 'create-sales' },
   { href: '/dashboard/products',       label: 'Products',        icon: Package,                       permission: 'view-products' },
+  { href: '/dashboard/products/barcode-generator', label: 'Barcode Generator', icon: Barcode,          permission: 'view-products' },
   { href: '/dashboard/categories',     label: 'Categories',      icon: Layers,                        permission: 'view-products' },
   { href: '/dashboard/brands',         label: 'Brands',          icon: Tag,                           permission: 'view-products' },
   { href: '/dashboard/inventory',      label: 'Inventory',       icon: BarChart3,                     permission: 'view-inventory' },
@@ -140,29 +142,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto sidebar-scroll">
-          {NAV_ITEMS.filter(item => {
-            if (!item.permission) return true;
-            if (user?.roles?.includes('store-owner')) return true;
-            return user?.permissions?.includes(item.permission) ?? false;
-          }).map((item) => {
-            const isActive = item.exact ? pathname === item.href : pathname?.startsWith(item.href);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
-                  isActive
-                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
+          {(() => {
+            // When multiple hrefs match (e.g. /dashboard/products and
+            // /dashboard/products/barcode-generator both prefix-match the
+            // barcode generator page), only the most specific one should
+            // light up — not every ancestor route too.
+            const activeHref = NAV_ITEMS
+              .filter(item => pathname === item.href || (!item.exact && pathname?.startsWith(item.href)))
+              .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+
+            return NAV_ITEMS.filter(item => {
+              if (!item.permission) return true;
+              if (user?.roles?.includes('store-owner')) return true;
+              return user?.permissions?.includes(item.permission) ?? false;
+            }).map((item) => {
+              const isActive = item.href === activeHref;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+                    isActive
+                      ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            });
+          })()}
         </nav>
 
         {/* Subscription status banners */}

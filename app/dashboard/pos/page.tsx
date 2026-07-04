@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Search, ShoppingCart, X, Plus, Minus, Trash2, User, Tag,
-  Pause, Loader2, Package, Keyboard, Gift, CreditCard,
+  Pause, Loader2, Package, Keyboard, Gift, CreditCard, Camera,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import { apiClient, getItems, getErrorMessage } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import CustomerModal from '@/components/pos/CustomerModal';
+import BarcodeScannerModal from '@/components/pos/BarcodeScannerModal';
 import PaymentModal from '@/components/pos/PaymentModal';
 import ReceiptScreen from '@/components/pos/ReceiptScreen';
 import { SyncIndicator } from '@/components/pos/SyncIndicator';
@@ -54,6 +55,7 @@ export default function PosPage() {
   const [loadingProducts, setLoadingProducts] = useState(false);
 
   const [showCustomer, setShowCustomer]   = useState(false);
+  const [showScanner, setShowScanner]     = useState(false);
   const [showPayment, setShowPayment]     = useState(false);
   const [showHolds, setShowHolds]         = useState(false);
   const [showDiscount, setShowDiscount]   = useState(false);
@@ -385,6 +387,7 @@ export default function PosPage() {
       if (e.key === 'Escape') {
         setShowCustomer(false); setShowPayment(false); setShowHolds(false);
         setShowDiscount(false); setShowShortcuts(false); setShowRedeem(false);
+        setShowScanner(false);
         setEditItem(null);
         // Return focus to the scanner input so keyboard-only flow can continue.
         setTimeout(() => searchRef.current?.focus(), 0);
@@ -480,6 +483,10 @@ export default function PosPage() {
             </button>
           )}
         </div>
+        <button onClick={() => setShowScanner(true)} title="Scan with camera"
+          className="h-12 w-12 flex-shrink-0 rounded-xl border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors">
+          <Camera className="h-5 w-5" />
+        </button>
         {/* Sync status pill */}
         <SyncIndicator sync={sync} />
         </div>{/* end flex items-center gap-2 */}
@@ -767,6 +774,15 @@ export default function PosPage() {
 
       <AnimatePresence>
         {showCustomer && <CustomerModal onSelect={attachCustomer} onClose={() => setShowCustomer(false)} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showScanner && (
+          <BarcodeScannerModal
+            onScan={(code) => { setShowScanner(false); handleBarcodeScan(code); }}
+            onClose={() => setShowScanner(false)}
+          />
+        )}
       </AnimatePresence>
 
       {/* Payment modal — online or offline paths */}
