@@ -1,4 +1,8 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import { useLoadingStore } from '@/store/loading';
+
+const MUTATING_METHODS = new Set(['post', 'put', 'patch', 'delete']);
+const isMutating = (method?: string) => !!method && MUTATING_METHODS.has(method.toLowerCase());
 
 const API_BASE_URL =
   typeof window !== 'undefined'
@@ -26,13 +30,29 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
       config.headers.Authorization = `Bearer ${token}`;
     }
   }
+
+  // Track in-flight writes so a global overlay can show "working…" feedback
+  // and block double-clicks, without every page needing its own saving state.
+  if (isMutating(config.method)) {
+    useLoadingStore.getState().start();
+  }
+
   return config;
 });
 
 // Handle errors globally
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (isMutating(response.config.method)) {
+      useLoadingStore.getState().finish();
+    }
+    return response;
+  },
   (error: AxiosError<any>) => {
+    if (isMutating(error.config?.method)) {
+      useLoadingStore.getState().finish();
+    }
+
     if (typeof window === 'undefined') return Promise.reject(error);
 
     if (error.response?.status === 401) {

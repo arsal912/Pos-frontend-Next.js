@@ -1,9 +1,86 @@
 'use client';
 
-import { Palette, Shield, Info } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Palette, Shield, Info, Receipt, Loader2, Save } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { ThemeSelector } from '@/components/ui/ThemeSelector';
 import { useAuthStore } from '@/store/auth';
+import { apiClient, getErrorMessage } from '@/lib/api';
+import { toast } from 'sonner';
+
+function ReceiptFooterSettings() {
+  const [isEnabled, setIsEnabled] = useState(true);
+  const [footerText, setFooterText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    apiClient.get('/admin/settings/receipt-footer')
+      .then(res => {
+        const setting = (res.data as any)?.setting;
+        setIsEnabled(setting?.is_enabled ?? true);
+        setFooterText(setting?.footer_text ?? '');
+      })
+      .catch(err => toast.error(getErrorMessage(err)))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await apiClient.put('/admin/settings/receipt-footer', { is_enabled: isEnabled, footer_text: footerText });
+      toast.success('Platform receipt footer updated.');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="p-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <Receipt className="h-4 w-4 text-primary" />
+        <h2 className="font-display font-bold text-lg">Receipt Footer (All Stores)</h2>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+      ) : (
+        <>
+          <div className="flex items-center justify-between">
+            <Label className="text-sm">Show on receipts</Label>
+            <Switch checked={isEnabled} onCheckedChange={setIsEnabled} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Footer text</Label>
+            <textarea value={footerText} onChange={e => setFooterText(e.target.value)} rows={3}
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm resize-none"
+              placeholder="e.g. Powered by MyPOS · support@mypos.com · +1 555 0100" />
+          </div>
+
+          <Button onClick={save} disabled={saving} className="w-full gap-2">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Save
+          </Button>
+
+          <div className="pt-2 border-t flex items-start gap-2 text-xs text-muted-foreground">
+            <Info className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+            <p>
+              This text prints at the very bottom of every store's receipts — thermal, A4, and PDF —
+              beneath their own header/footer. Store owners can see it in their receipt preview but
+              cannot edit or remove it; it's only set here.
+            </p>
+          </div>
+        </>
+      )}
+    </Card>
+  );
+}
 
 export default function AdminSettingsPage() {
   const user = useAuthStore(s => s.user);
@@ -30,6 +107,8 @@ export default function AdminSettingsPage() {
           </p>
         </div>
       </Card>
+
+      <ReceiptFooterSettings />
 
       {/* Account info */}
       <Card className="p-6 space-y-3">

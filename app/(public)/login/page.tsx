@@ -1,7 +1,8 @@
 'use client';
+export const dynamic = 'force-dynamic';
 
 import { useState, FormEvent } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Sparkles, Eye, EyeOff, Loader2 } from 'lucide-react';
@@ -16,7 +17,6 @@ import type { User } from '@/types';
 
 function LoginPageContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const setAuth = useAuthStore((s) => s.setAuth);
 
   const [email, setEmail] = useState('');
@@ -38,7 +38,9 @@ function LoginPageContent() {
       toast.success('Welcome back!');
 
       // Redirect based on role
-      const redirect = searchParams.get('redirect');
+      const redirect = typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('redirect')
+        : null;
       if (redirect) {
         router.push(redirect);
       } else if (res.data.user.is_super_admin) {

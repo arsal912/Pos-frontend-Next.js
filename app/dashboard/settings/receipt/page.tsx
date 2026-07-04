@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Plus, Pencil, Trash2, Loader2, Eye, Star, X, Save } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Eye, Star, X, Save, Info } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -126,6 +127,16 @@ export default function ReceiptSettingsPage() {
           <Button onClick={() => openCreate('a4')} className="gap-2"><Plus className="h-4 w-4" />A4</Button>
         </div>
       </div>
+
+      <Card className="p-4 flex items-start gap-2 text-xs text-muted-foreground bg-muted/20 border-dashed">
+        <Info className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+        <p>
+          Your store name, logo, address, and phone shown on receipts come from{' '}
+          <Link href="/dashboard/settings" className="text-primary hover:underline">General Settings</Link>.
+          A platform-wide footer note also prints at the very bottom of every receipt — set by the platform
+          admin, shown in the preview below, but not editable here.
+        </p>
+      </Card>
 
       <div className="grid lg:grid-cols-12 gap-6">
         {/* Template list */}

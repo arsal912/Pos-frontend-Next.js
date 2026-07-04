@@ -4,11 +4,12 @@ import {
   useEffect, useState, useCallback, useRef, useMemo, KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import { loadShortcuts, loadCustomShortcuts } from '@/lib/shortcuts';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Search, ShoppingCart, X, Plus, Minus, Trash2, User, Tag,
-  Pause, Loader2, Package, Keyboard, Gift, CreditCard,
+  Pause, Loader2, Package, Keyboard, Gift, CreditCard, Camera,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ import { apiClient, getItems, getErrorMessage } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import CustomerModal from '@/components/pos/CustomerModal';
+import BarcodeScannerModal from '@/components/pos/BarcodeScannerModal';
 import PaymentModal from '@/components/pos/PaymentModal';
 import ReceiptScreen from '@/components/pos/ReceiptScreen';
 import { SyncIndicator } from '@/components/pos/SyncIndicator';
@@ -53,6 +55,7 @@ export default function PosPage() {
   const [loadingProducts, setLoadingProducts] = useState(false);
 
   const [showCustomer, setShowCustomer]   = useState(false);
+  const [showScanner, setShowScanner]     = useState(false);
   const [showPayment, setShowPayment]     = useState(false);
   const [showHolds, setShowHolds]         = useState(false);
   const [showDiscount, setShowDiscount]   = useState(false);
@@ -73,6 +76,15 @@ export default function PosPage() {
   const lastKeyTime   = useRef(0);
   const barcodeBuffer = useRef('');
   const SCAN_THRESHOLD = 100;
+
+  const holdsModalRef  = useRef<HTMLDivElement>(null);
+  const redeemModalRef = useRef<HTMLDivElement>(null);
+  const pageRef        = useRef<HTMLDivElement>(null);
+  useFocusTrap(holdsModalRef, showHolds);
+  useFocusTrap(redeemModalRef, showRedeem);
+  // Keeps Tab cycling within the POS work area only — never into the dashboard
+  // sidebar and never out to the browser chrome (address bar, extensions, etc).
+  useFocusTrap(pageRef, !saleLoading);
 
   // Phase 6 — device registry + offline sync
   const user    = useAuthStore(s => s.user);
@@ -370,6 +382,18 @@ export default function PosPage() {
     };
 
     const h = (e: globalThis.KeyboardEvent) => {
+      // Escape must always close whatever's open, even while typing in a
+      // search/amount/reason field — that's where focus sits most of the time.
+      if (e.key === 'Escape') {
+        setShowCustomer(false); setShowPayment(false); setShowHolds(false);
+        setShowDiscount(false); setShowShortcuts(false); setShowRedeem(false);
+        setShowScanner(false);
+        setEditItem(null);
+        // Return focus to the scanner input so keyboard-only flow can continue.
+        setTimeout(() => searchRef.current?.focus(), 0);
+        return;
+      }
+
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       const key = pressedKey(e);
 
@@ -380,11 +404,6 @@ export default function PosPage() {
       if (key === sc.pay)      { e.preventDefault(); if (sale?.items?.length) setShowPayment(true); return; }
       if (key === sc.hold)     { e.preventDefault(); loadHolds(); setShowHolds(true); return; }
       if (key === sc.help)     { e.preventDefault(); setShowShortcuts(s => !s); return; }
-      if (e.key === 'Escape') {
-        setShowCustomer(false); setShowPayment(false); setShowHolds(false);
-        setShowDiscount(false); setShowShortcuts(false); setEditItem(null);
-        return;
-      }
 
       // Custom shortcuts
       const custom = customs.find(c => c.key === key);
@@ -399,8 +418,11 @@ export default function PosPage() {
       }
     };
 
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
+    // Scoped to the POS work area only — a keystroke made while focus is in the
+    // dashboard sidebar (or anywhere else outside this page) must not trigger these.
+    const container = pageRef.current;
+    container?.addEventListener('keydown', h);
+    return () => container?.removeEventListener('keydown', h);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sale, router]);
 
@@ -422,7 +444,7 @@ export default function PosPage() {
   if (saleLoading) return <div className="h-full flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
   return (
-    <div className="relative h-[calc(100vh-2rem)] flex gap-4 overflow-hidden -m-6 md:-m-10 p-3">
+    <div ref={pageRef} className="relative h-[calc(100vh-2rem)] flex gap-4 overflow-hidden -m-6 md:-m-10 p-3">
 
       {/* ── SW update banner (edge case J) ────────────────────────────────── */}
       {updateAvailable && (
@@ -463,6 +485,10 @@ export default function PosPage() {
             </button>
           )}
         </div>
+        <button onClick={() => setShowScanner(true)} title="Scan with camera"
+          className="h-12 w-12 flex-shrink-0 rounded-xl border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors">
+          <Camera className="h-5 w-5" />
+        </button>
         {/* Sync status pill */}
         <SyncIndicator sync={sync} />
         </div>{/* end flex items-center gap-2 */}
@@ -557,7 +583,7 @@ export default function PosPage() {
                     <CreditCard className="h-2.5 w-2.5" />{Number(customer.outstanding_balance).toFixed(2)} owed
                   </span>
                 )}
-                {customer.group && (
+                {customer && 'group' in customer && customer.group && (
                   <span className="text-[10px] px-1.5 rounded-full font-medium"
                     style={{background:customer.group.color+'20',color:customer.group.color}}>
                     {customer.group.name}
@@ -726,7 +752,7 @@ export default function PosPage() {
         {showHolds && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowHolds(false)} />
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative z-10 w-full max-w-md">
+            <motion.div ref={holdsModalRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative z-10 w-full max-w-md">
               <Card className="p-5">
                 <div className="flex items-center justify-between mb-4"><h2 className="font-display font-bold text-lg">Parked Sales</h2><button onClick={() => setShowHolds(false)} className="text-muted-foreground"><X className="h-4 w-4" /></button></div>
                 {items.length > 0 && (
@@ -750,6 +776,15 @@ export default function PosPage() {
 
       <AnimatePresence>
         {showCustomer && <CustomerModal onSelect={attachCustomer} onClose={() => setShowCustomer(false)} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showScanner && (
+          <BarcodeScannerModal
+            onScan={(code) => { setShowScanner(false); handleBarcodeScan(code); }}
+            onClose={() => setShowScanner(false)}
+          />
+        )}
       </AnimatePresence>
 
       {/* Payment modal — online or offline paths */}
@@ -782,7 +817,7 @@ export default function PosPage() {
         {showRedeem && customer && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={()=>setShowRedeem(false)}/>
-            <motion.div initial={{opacity:0,scale:0.95}} animate={{opacity:1,scale:1}} exit={{opacity:0,scale:0.95}} className="relative z-10 w-full max-w-sm">
+            <motion.div ref={redeemModalRef} initial={{opacity:0,scale:0.95}} animate={{opacity:1,scale:1}} exit={{opacity:0,scale:0.95}} className="relative z-10 w-full max-w-sm">
               <Card className="p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Gift className="h-5 w-5 text-success"/>

@@ -73,7 +73,7 @@ const emptyForm = (): ExpenseFormValues => ({
 function ExpenseForm({
   initial, categories, onSaved, onCancel, editId,
 }: {
-  initial?: ReturnType<typeof emptyForm>;
+  initial?: ExpenseFormValues;
   categories: string[];
   onSaved: () => void;
   onCancel?: () => void;

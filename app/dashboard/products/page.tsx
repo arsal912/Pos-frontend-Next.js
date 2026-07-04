@@ -185,7 +185,7 @@ export default function ProductsPage() {
                       <td className="px-4 py-3 font-mono">{Number(p.selling_price).toFixed(2)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm">{(p.total_stock ?? 0).toFixed(0)}</span>
+                          <span className="font-mono text-sm">{Number(p.total_stock ?? 0).toFixed(0)}</span>
                           {stockBadge(p.total_stock ?? 0)}
                         </div>
                       </td>

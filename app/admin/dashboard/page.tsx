@@ -3,14 +3,21 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Store, Users, DollarSign, AlertCircle, TrendingUp, Clock, XCircle,
+  Store, Users, DollarSign, AlertCircle, TrendingUp, TrendingDown, Clock, XCircle,
   CalendarClock, ShoppingCart, Package, UserCheck, BarChart3,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { apiClient } from '@/lib/api';
+import { useSalesOverTime, usePaymentsBreakdown, useTopStores, useSubscriptionsComparison } from '@/hooks/useAdminCharts';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatRelativeTime } from '@/lib/utils';
+import dynamic from 'next/dynamic';
+import { Suspense } from 'react';
+
+const RevenueAreaChart = dynamic(() => import('@/components/ui/charts/RevenueAreaChart'), { ssr: false });
+const PaymentsPieChart = dynamic(() => import('@/components/ui/charts/PaymentsPieChart'), { ssr: false });
+const TopStoresBar = dynamic(() => import('@/components/ui/charts/TopStoresBar'), { ssr: false });
 
 interface TopStore {
   store_name: string;
@@ -52,12 +59,17 @@ interface DashboardData {
 export default function AdminDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const salesQuery = useSalesOverTime(30);
+  const paymentsQuery = usePaymentsBreakdown();
+  const topStoresQuery = useTopStores(6);
+  const subsComparisonQuery = useSubscriptionsComparison();
 
   useEffect(() => {
-    apiClient
-      .get<DashboardData>('/admin/dashboard')
-      .then((res) => setData(res.data))
-      .finally(() => setLoading(false));
+    let mounted = true;
+    apiClient.get<DashboardData>('/admin/dashboard').then((res) => {
+      if (mounted) setData(res.data);
+    }).catch(() => {}).finally(() => { if (mounted) setLoading(false); });
+    return () => { mounted = false; };
   }, []);
 
   if (loading) {
@@ -181,6 +193,59 @@ export default function AdminDashboardPage() {
           )}
         </Card>
       </div>
+
+      {/* Charts section */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        <Card className="p-4">
+          <h3 className="font-display text-lg font-bold mb-3">Revenue (30 days)</h3>
+            <Suspense fallback={<div className="h-64 bg-muted animate-pulse"/>}>
+            <RevenueAreaChart data={Array.isArray(salesQuery.data) ? salesQuery.data : []} />
+          </Suspense>
+        </Card>
+
+        <Card className="p-4">
+          <h3 className="font-display text-lg font-bold mb-3">Payments Breakdown</h3>
+          <Suspense fallback={<div className="h-56 bg-muted animate-pulse"/>}>
+            <PaymentsPieChart data={Array.isArray(paymentsQuery.data) ? paymentsQuery.data : []} />
+          </Suspense>
+        </Card>
+
+        <Card className="p-4">
+          <h3 className="font-display text-lg font-bold mb-3">Top Stores (Today)</h3>
+          <Suspense fallback={<div className="h-64 bg-muted animate-pulse"/>}>
+            <TopStoresBar data={Array.isArray(topStoresQuery.data) ? topStoresQuery.data : []} />
+          </Suspense>
+        </Card>
+      </div>
+
+      {/* Subscriptions comparison */}
+      <Card className="p-6">
+        <h3 className="font-display text-lg font-bold mb-4">New Subscriptions</h3>
+        {(() => {
+          const thisMonth = subsComparisonQuery.data?.this_month ?? 0;
+          const lastMonth = subsComparisonQuery.data?.last_month ?? 0;
+          const change = subsComparisonQuery.data?.percent_change;
+          const isUp = (change ?? 0) >= 0;
+          return (
+            <div className="flex items-center gap-8">
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">This Month</p>
+                <p className="text-3xl font-display font-bold mt-1">{thisMonth}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Last Month</p>
+                <p className="text-3xl font-display font-bold mt-1 text-muted-foreground">{lastMonth}</p>
+              </div>
+              {change !== null && change !== undefined && (
+                <div className={`flex items-center gap-1.5 text-sm font-medium ${isUp ? 'text-success' : 'text-destructive'}`}>
+                  {isUp ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                  {Math.abs(change)}% vs last month
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </Card>
 
       {/* Top stores by revenue */}
       {(data.top_stores_by_revenue ?? []).length > 0 && (

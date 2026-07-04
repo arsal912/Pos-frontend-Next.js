@@ -208,11 +208,9 @@ export class OfflineSyncService {
 
     // Store meta as key-value pairs
     if (data.store_meta) {
-      const kvRows: Array<StoreMeta> = Object.entries(data.store_meta).map(([key, value]) => ({
+      const kvRows: StoreMeta[] = Object.entries(data.store_meta).map(([key, value]) => ({
         key,
-        value: (typeof value === 'object' && value !== null) || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null
-          ? value as StoreMeta['value']
-          : String(value),
+        value: value as StoreMeta['value'],
       }));
       await db.store_meta.bulkPut(kvRows);
     }

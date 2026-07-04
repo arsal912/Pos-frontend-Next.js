@@ -1,17 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import {
   ShoppingCart, Package, Users, TrendingUp, ArrowRight,
   BarChart3, AlertTriangle, CreditCard, Gift,
 } from 'lucide-react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/auth';
 import { apiClient } from '@/lib/api';
+import { useSalesTrend } from '@/hooks/useStoreCharts';
 import { formatCurrency } from '@/lib/utils';
+
+const SalesTrendChart = dynamic(() => import('@/components/ui/charts/SalesTrendChart'), { ssr: false });
 
 interface DashboardStats {
   revenue_today: number;
@@ -28,6 +32,7 @@ export default function StoreDashboardPage() {
   const currency = user?.store?.currency ?? 'PKR';
   const [stats, setStats] = useState<Partial<DashboardStats>>({});
   const [loading, setLoading] = useState(false);
+  const salesTrendQuery = useSalesTrend(30);
 
   useEffect(() => {
     setLoading(true);
@@ -92,6 +97,17 @@ export default function StoreDashboardPage() {
           </motion.div>
         ))}
       </div>
+
+      {/* Sales trend */}
+      <Card className="p-4">
+        <h3 className="font-display text-lg font-bold mb-3">Sales Trend (30 days)</h3>
+        <Suspense fallback={<div className="h-64 bg-muted animate-pulse" />}>
+          <SalesTrendChart
+            chart_data={salesTrendQuery.data ?? { labels: [], series: [] }}
+            currency={currency}
+          />
+        </Suspense>
+      </Card>
 
       {/* Quick actions */}
       <div className="grid sm:grid-cols-2 gap-4">
