@@ -249,6 +249,7 @@ export interface Product {
   allow_negative_stock: boolean;
   low_stock_threshold: number | null;
   is_active: boolean;
+  is_weightable: boolean;
   created_by: number | null;
   total_stock?: number;
   variants_count?: number;

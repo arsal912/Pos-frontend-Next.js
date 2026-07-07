@@ -173,7 +173,12 @@ export default function ProductsPage() {
                             </div>
                           )}
                           <div>
-                            <p className="font-medium">{p.name}</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-medium">{p.name}</p>
+                              {p.is_weightable && (
+                                <Badge variant="outline" className="text-[10px] flex-shrink-0">Weightable</Badge>
+                              )}
+                            </div>
                             {p.type === 'variable' && (
                               <p className="text-xs text-muted-foreground">{p.variants_count} variants</p>
                             )}

@@ -56,7 +56,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
     category_id: '', brand_id: '', unit_id: '', tax_rate_id: '',
     cost_price: '', selling_price: '', msrp: '',
     track_stock: true, allow_negative_stock: false,
-    low_stock_threshold: '', is_active: true,
+    low_stock_threshold: '', is_active: true, is_weightable: false,
     initial_stock: '', branch_id: '',
   });
 
@@ -97,7 +97,8 @@ export default function ProductForm({ productId }: ProductFormProps) {
             msrp: String(p.msrp ?? ''), track_stock: p.track_stock,
             allow_negative_stock: p.allow_negative_stock,
             low_stock_threshold: String(p.low_stock_threshold ?? ''),
-            is_active: p.is_active, initial_stock: '', branch_id: '',
+            is_active: p.is_active, is_weightable: p.is_weightable ?? false,
+            initial_stock: '', branch_id: '',
           });
           setVariants(p.variants ?? []);
           setImages(p.images ?? []);
@@ -140,6 +141,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
         allow_negative_stock: form.allow_negative_stock,
         low_stock_threshold: form.low_stock_threshold ? parseInt(form.low_stock_threshold) : undefined,
         is_active: form.is_active,
+        is_weightable: form.is_weightable,
         initial_stock: form.initial_stock ? parseFloat(form.initial_stock) : undefined,
         branch_id: form.branch_id ? parseInt(form.branch_id) : undefined,
       };
@@ -389,6 +391,14 @@ export default function ProductForm({ productId }: ProductFormProps) {
             <div className="flex items-center justify-between">
               <Label>Active</Label>
               <Switch checked={form.is_active} onCheckedChange={v => upd('is_active', v)} />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-sm">Weightable</p>
+                <p className="text-xs text-muted-foreground">Sold by weight (kg/g) rather than by unit count</p>
+              </div>
+              <Switch checked={form.is_weightable} onCheckedChange={v => upd('is_weightable', v)} />
             </div>
           </div>
         )}

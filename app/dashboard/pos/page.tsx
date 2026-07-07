@@ -523,6 +523,7 @@ export default function PosPage() {
                         !inStock && 'opacity-50 cursor-not-allowed')}>
                       {!inStock && <span className="absolute top-1.5 right-1.5 text-[9px] bg-destructive text-white px-1 py-0.5 rounded">Out</span>}
                       {stale && <span className="absolute top-1.5 left-1.5 text-[9px] bg-amber-400 text-amber-900 px-1 py-0.5 rounded" title={`Data from ${staleLabel(p.cached_at)}`}>stale</span>}
+                      {p.is_weightable && <span className="absolute bottom-1.5 left-1.5 text-[9px] bg-primary text-primary-foreground px-1 py-0.5 rounded">Wt</span>}
                       <div className="aspect-square rounded-lg bg-muted mb-2 overflow-hidden">
                         {p.primary_image?.path ? (
                           <img src={`/api/backend/store/files/${p.primary_image.path}`} alt={p.name} className="w-full h-full object-cover" />
