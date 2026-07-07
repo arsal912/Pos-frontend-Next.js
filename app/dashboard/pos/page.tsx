@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Search, ShoppingCart, X, Plus, Minus, Trash2, User, Tag,
-  Pause, Loader2, Package, Keyboard, Gift, CreditCard, Camera,
+  Pause, Loader2, Package, Keyboard, Gift, CreditCard, Camera, Scale,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -62,6 +62,14 @@ export default function PosPage() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showRedeem, setShowRedeem]       = useState(false);
   const [editItem, setEditItem]           = useState<SaleItem | null>(null);
+  // Weight-entry modal — manual scale entry for weightable products (add new line or correct an existing one)
+  const [weightModal, setWeightModal]     = useState<
+    | { mode: 'add'; product: any; variantId: number | null; weightUnit: string }
+    | { mode: 'edit'; item: any; weightUnit: string }
+    | null
+  >(null);
+  const [weightInput, setWeightInput]     = useState('');
+  const [weightSaving, setWeightSaving]   = useState(false);
   const [holds, setHolds]                 = useState<HoldSale[]>([]);
   const [holdName, setHoldName]           = useState('');
   const [redeemPoints, setRedeemPoints]   = useState('');
@@ -111,6 +119,22 @@ export default function PosPage() {
   }, [offlineProducts, products, productSearch]);
   const displayCategories = offlineCategories != null ? (offlineCategories ?? []) : categories;
   const usingOfflineData  = offlineProducts != null;
+
+  // Lookup by product_id so online SaleItem rows (which don't carry is_weightable/
+  // weight_unit — that's product-level data, not snapshotted onto sale_items) can
+  // still be identified as weightable using the already-loaded product catalog.
+  const productById = useMemo(() => {
+    const map = new Map<number, any>();
+    for (const p of displayProducts) map.set(p.id, p);
+    return map;
+  }, [displayProducts]);
+
+  const getItemWeightInfo = useCallback((item: any) => {
+    const prod = productById.get(item.product_id);
+    const isWeightItem = Boolean(item.is_weightable ?? prod?.is_weightable);
+    const weightUnit   = item.weight_unit ?? prod?.weight_unit ?? 'kg';
+    return { isWeightItem, weightUnit };
+  }, [productById]);
 
   // ── Init ────────────────────────────────────────────────────────────────────
 
@@ -174,10 +198,10 @@ export default function PosPage() {
 
   // ── Product add ──────────────────────────────────────────────────────────────
 
-  const addProductToCart = async (product: any, variantId?: number | null) => {
+  const addProductToCart = async (product: any, variantId?: number | null, weight?: number) => {
     // Offline: add to local IndexedDB cart
     if (!navigator.onLine) {
-      const { stockWarning } = offlineCartHook.addProduct(product, variantId);
+      const { stockWarning } = offlineCartHook.addProduct(product, variantId, weight);
       if (stockWarning) toast.warning(`Stock warning: ${stockWarning}. Added anyway.`);
       return;
     }
@@ -186,9 +210,23 @@ export default function PosPage() {
       const res = await apiClient.post(`/store/pos/sales/${sale.id}/items`, {
         product_id: product.id,
         variant_id: variantId ?? undefined,
+        quantity: weight ?? undefined,
       });
       setSale((res.data as any)?.sale ?? sale);
     } catch (err) { toast.error(getErrorMessage(err)); }
+  };
+
+  // Gate for every "add this product to the cart" entry point: weightable
+  // products must never be added with a hardcoded quantity of 1 — they need
+  // a manually-entered weighed amount first.
+  const openAddWeightModal = (product: any, variantId?: number | null) => {
+    setWeightInput('');
+    setWeightModal({ mode: 'add', product, variantId: variantId ?? null, weightUnit: product?.weight_unit || 'kg' });
+  };
+
+  const handleProductActivate = (product: any, variantId?: number | null) => {
+    if (product?.is_weightable) { openAddWeightModal(product, variantId); return; }
+    addProductToCart(product, variantId);
   };
 
   const handleBarcodeScan = async (barcode: string) => {
@@ -196,7 +234,7 @@ export default function PosPage() {
     if (storeId) {
       const cached = await lookupOfflineProductByBarcode(storeId, barcode);
       if (cached) {
-        await addProductToCart(cached as any);
+        handleProductActivate(cached as any);
         setProductSearch('');
         return;
       }
@@ -206,7 +244,7 @@ export default function PosPage() {
     try {
       const res = await apiClient.get('/store/products/lookup', { barcode });
       const data = res.data as any;
-      if (data.product) { await addProductToCart(data.product, data.variant?.id); setProductSearch(''); }
+      if (data.product) { handleProductActivate(data.product, data.variant?.id); setProductSearch(''); }
       else toast.error('Product not found: ' + barcode);
     } catch { toast.error('Product not found.'); }
   };
@@ -240,6 +278,42 @@ export default function PosPage() {
       const res = await apiClient.delete(`/store/pos/sales/${sale.id}/items/${item.id}`);
       setSale((res.data as any)?.sale ?? sale);
     } catch (err) { toast.error(getErrorMessage(err)); }
+  };
+
+  // Reopen the weight modal for an existing weightable cart line, prefilled
+  // with its current weight, so a misweigh can be corrected. Mirrors the
+  // tap-to-edit affordance the normal "Edit" panel gives non-weightable
+  // items — but this one works both online and offline.
+  const openEditWeightModal = (item: any) => {
+    const { weightUnit } = getItemWeightInfo(item);
+    setWeightInput(String(item.quantity));
+    setWeightModal({ mode: 'edit', item, weightUnit });
+  };
+
+  const confirmWeight = async () => {
+    if (!weightModal) return;
+    const weight = parseFloat(weightInput);
+    if (!weightInput.trim() || isNaN(weight) || weight <= 0) {
+      toast.error('Enter a valid weight greater than 0.');
+      return;
+    }
+    setWeightSaving(true);
+    try {
+      if (weightModal.mode === 'edit') {
+        const item = weightModal.item;
+        if (offlineMode) {
+          offlineCartHook.setWeight(item.local_id, weight);
+        } else if (sale) {
+          const res = await apiClient.put(`/store/pos/sales/${sale.id}/items/${item.id}`, { quantity: weight });
+          setSale((res.data as any)?.sale ?? sale);
+        }
+      } else {
+        await addProductToCart(weightModal.product, weightModal.variantId, weight);
+      }
+      setWeightModal(null);
+      setWeightInput('');
+    } catch (err) { toast.error(getErrorMessage(err)); }
+    finally { setWeightSaving(false); }
   };
 
   const updateEditItem = async () => {
@@ -389,6 +463,7 @@ export default function PosPage() {
         setShowDiscount(false); setShowShortcuts(false); setShowRedeem(false);
         setShowScanner(false);
         setEditItem(null);
+        setWeightModal(null); setWeightInput('');
         // Return focus to the scanner input so keyboard-only flow can continue.
         setTimeout(() => searchRef.current?.focus(), 0);
         return;
@@ -518,13 +593,12 @@ export default function PosPage() {
                   const price   = p.selling_price ?? p.price ?? 0;
                   return (
                     <motion.button key={p.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: Math.min(i * 0.02, 0.3) }}
-                      onClick={() => inStock ? addProductToCart(p) : toast.warning('Out of stock')}
+                      onClick={() => inStock ? handleProductActivate(p) : toast.warning('Out of stock')}
                       className={cn('text-left p-3 rounded-xl border bg-card hover:shadow-md transition-all active:scale-95 relative',
                         !inStock && 'opacity-50 cursor-not-allowed')}>
                       {!inStock && <span className="absolute top-1.5 right-1.5 text-[9px] bg-destructive text-white px-1 py-0.5 rounded">Out</span>}
                       {stale && <span className="absolute top-1.5 left-1.5 text-[9px] bg-amber-400 text-amber-900 px-1 py-0.5 rounded" title={`Data from ${staleLabel(p.cached_at)}`}>stale</span>}
-                      {p.is_weightable && <span className="absolute bottom-1.5 left-1.5 text-[9px] bg-primary text-primary-foreground px-1 py-0.5 rounded">Wt</span>}
-                      <div className="aspect-square rounded-lg bg-muted mb-2 overflow-hidden">
+                      <div className="relative aspect-square rounded-lg bg-muted mb-2 overflow-hidden">
                         {p.primary_image?.path ? (
                           <img src={`/api/backend/store/files/${p.primary_image.path}`} alt={p.name} className="w-full h-full object-cover" />
                         ) : p.image_url ? (
@@ -532,6 +606,7 @@ export default function PosPage() {
                         ) : (
                           <div className="w-full h-full flex items-center justify-center"><Package className="h-6 w-6 text-muted-foreground" /></div>
                         )}
+                        {p.is_weightable && <span className="absolute bottom-1 right-1 text-[9px] bg-primary text-primary-foreground px-1 py-0.5 rounded">Wt/{p.weight_unit || 'kg'}</span>}
                       </div>
                       <p className="font-medium text-sm leading-tight line-clamp-2">{p.name}</p>
                       <div className="flex items-center justify-between mt-1">
@@ -602,27 +677,37 @@ export default function PosPage() {
           ) : items.map((item: any) => {
             // Support both server items (item.id) and offline items (item.local_id)
             const itemKey = item.local_id ?? item.id;
+            const { isWeightItem, weightUnit } = getItemWeightInfo(item);
             return (
             <div key={itemKey} className="rounded-xl border bg-background p-2.5">
               <div className="flex items-start justify-between gap-1 mb-1.5">
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm leading-tight truncate">{item.product_name}</p>
-                  <p className="text-xs text-muted-foreground font-mono">{item.sku}</p>
+                  <p className="text-xs text-muted-foreground font-mono">
+                    {isWeightItem ? `${Number(item.unit_price).toFixed(2)}/${weightUnit}` : item.sku}
+                  </p>
                 </div>
                 <p className="font-bold text-sm flex-shrink-0">{Number(item.line_total).toFixed(2)}</p>
               </div>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  <button onClick={() => offlineMode ? offlineCartHook.updateQty(itemKey, -1) : updateItemQty(item, -1)} className="h-7 w-7 rounded-lg border flex items-center justify-center hover:bg-muted">
-                    <Minus className="h-3.5 w-3.5" />
+                {isWeightItem ? (
+                  <button onClick={() => openEditWeightModal(item)}
+                    className="h-7 px-2 rounded-lg border text-xs font-mono hover:bg-muted flex items-center gap-1">
+                    <Scale className="h-3 w-3" />{Number(item.quantity).toFixed(3)} {weightUnit}
                   </button>
-                  <span className="w-10 text-center font-mono text-sm">{Number(item.quantity) % 1 === 0 ? Number(item.quantity) : Number(item.quantity).toFixed(2)}</span>
-                  <button onClick={() => offlineMode ? offlineCartHook.updateQty(itemKey, 1) : updateItemQty(item, 1)} className="h-7 w-7 rounded-lg border flex items-center justify-center hover:bg-muted">
-                    <Plus className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => offlineMode ? offlineCartHook.updateQty(itemKey, -1) : updateItemQty(item, -1)} className="h-7 w-7 rounded-lg border flex items-center justify-center hover:bg-muted">
+                      <Minus className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="w-10 text-center font-mono text-sm">{Number(item.quantity) % 1 === 0 ? Number(item.quantity) : Number(item.quantity).toFixed(2)}</span>
+                    <button onClick={() => offlineMode ? offlineCartHook.updateQty(itemKey, 1) : updateItemQty(item, 1)} className="h-7 w-7 rounded-lg border flex items-center justify-center hover:bg-muted">
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
                 <div className="flex gap-1">
-                  {!offlineMode && <button onClick={() => setEditItem(editItem?.id === item.id ? null : { ...item })}
+                  {!isWeightItem && !offlineMode && <button onClick={() => setEditItem(editItem?.id === item.id ? null : { ...item })}
                     className="h-7 px-2 rounded-lg border text-xs hover:bg-muted">Edit</button>}
                   <button onClick={() => offlineMode ? offlineCartHook.removeItem(itemKey) : removeItem(item)} className="h-7 w-7 rounded-lg border flex items-center justify-center hover:bg-destructive/10 text-destructive">
                     <Trash2 className="h-3.5 w-3.5" />
@@ -775,6 +860,61 @@ export default function PosPage() {
 
       <AnimatePresence>
         {showCustomer && <CustomerModal onSelect={attachCustomer} onClose={() => setShowCustomer(false)} />}
+      </AnimatePresence>
+
+      {/* Weight-entry modal — manual scale entry (no hardware integration). Works
+          both online and offline: add a new weighed line, or correct an existing one. */}
+      <AnimatePresence>
+        {weightModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => { setWeightModal(null); setWeightInput(''); }} />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="relative z-10 w-full max-w-sm">
+              <Card className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Scale className="h-5 w-5 text-primary" />
+                  <h2 className="font-display font-bold">
+                    {weightModal.mode === 'edit' ? 'Correct weight' : 'Enter weight'}
+                  </h2>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3 truncate">
+                  {weightModal.mode === 'edit' ? weightModal.item.product_name : weightModal.product?.name}
+                </p>
+                <div className="space-y-1.5 mb-2">
+                  <Label>Weight ({weightModal.weightUnit})</Label>
+                  <Input
+                    type="number" min="0" step="0.001" autoFocus
+                    value={weightInput}
+                    onChange={e => setWeightInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') confirmWeight(); }}
+                    placeholder={`e.g. 0.564`}
+                    className="text-lg h-12"
+                  />
+                </div>
+                {(() => {
+                  const w = parseFloat(weightInput);
+                  const unitPrice = weightModal.mode === 'edit'
+                    ? Number(weightModal.item.unit_price)
+                    : Number(weightModal.product?.selling_price ?? weightModal.product?.price ?? 0);
+                  return !isNaN(w) && w > 0 ? (
+                    <p className="text-sm text-center text-muted-foreground mb-4">
+                      {w} {weightModal.weightUnit} × {unitPrice.toFixed(2)}/{weightModal.weightUnit} = <strong className="text-primary">{(w * unitPrice).toFixed(2)}</strong>
+                    </p>
+                  ) : <div className="mb-4" />;
+                })()}
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => { setWeightModal(null); setWeightInput(''); }}>Cancel</Button>
+                  <Button className="flex-1 gap-2" disabled={weightSaving} onClick={confirmWeight}>
+                    {weightSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {weightModal.mode === 'edit' ? 'Update' : 'Add to cart'}
+                  </Button>
+                </div>
+              </Card>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
 
       <AnimatePresence>

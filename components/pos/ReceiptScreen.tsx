@@ -100,7 +100,10 @@ export default function ReceiptScreen(props: Props) {
     lines.push(`<table>`);
     for (const item of cart.items) {
       lines.push(`<tr><td>${escHtml(item.product_name)}</td><td class="right">${item.line_total.toFixed(2)}</td></tr>`);
-      lines.push(`<tr><td style="font-size:10px;color:#666">&nbsp;&nbsp;${item.quantity} × ${item.unit_price.toFixed(2)}</td><td></td></tr>`);
+      const detail = item.is_weightable
+        ? `${Number(item.quantity).toFixed(3)} ${item.weight_unit ?? ''} × ${item.unit_price.toFixed(2)}/${item.weight_unit ?? ''}`
+        : `${item.quantity} × ${item.unit_price.toFixed(2)}`;
+      lines.push(`<tr><td style="font-size:10px;color:#666">&nbsp;&nbsp;${detail}</td><td></td></tr>`);
     }
     lines.push(`</table><hr>`);
 

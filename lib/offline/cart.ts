@@ -25,6 +25,8 @@ export interface OfflineCartItem {
   tracks_stock:         boolean;
   allow_negative_stock: boolean;
   cached_stock:         number;   // stock at time of add (for validation)
+  is_weightable:        boolean; // true → quantity holds a manually-entered weight, not a unit count
+  weight_unit:          'g' | 'kg' | null; // meaningful only when is_weightable=true
 }
 
 export interface OfflineCartCustomer {
@@ -96,6 +98,7 @@ export function addItemToCart(
   cart:    OfflineCart,
   product: CachedProduct,
   variantId?: number | null,
+  initialQuantity?: number, // for weightable products: the entered weight (in product.weight_unit)
 ): { cart: OfflineCart; stockWarning: string | null } {
   const variant  = variantId ? product.variants?.find(v => v.id === variantId) : null;
   const price    = variant ? (variant.price ?? product.price) : product.price;
@@ -105,13 +108,46 @@ export function addItemToCart(
   const name     = variant ? `${product.name} - ${variant.name}` : product.name;
 
   let stockWarning: string | null = null;
+  let newItems: OfflineCartItem[];
+
+  if (product.is_weightable) {
+    // Each weighed entry is a distinct line — never merge with an existing
+    // weightable line for the same product (two separate weighings of the
+    // same product are not the same physical batch).
+    const qty = initialQuantity && initialQuantity > 0 ? initialQuantity : 1;
+    if (product.tracks_stock && !product.allow_negative_stock && qty > stock) {
+      stockWarning = `Only ${stock} in stock (you're adding ${qty})`;
+    }
+    const newItem: OfflineCartItem = recalcItem({
+      local_id:             `cli-${++seq}-${Date.now()}`,
+      product_id:           product.id,
+      variant_id:           variantId ?? null,
+      product_name:         name,
+      sku,
+      barcode:              barcode ?? null,
+      quantity:             qty,
+      unit_price:           price,
+      tax_rate:             product.tax_rate,
+      tax_inclusive:        product.tax_inclusive,
+      discount_amount:      0,
+      line_subtotal:        0,
+      line_tax:             0,
+      line_total:           0,
+      tracks_stock:         product.tracks_stock,
+      allow_negative_stock: product.allow_negative_stock,
+      cached_stock:         stock,
+      is_weightable:        true,
+      weight_unit:          product.weight_unit,
+    });
+    newItems = [...cart.items, newItem];
+    return { cart: recalcCart({ ...cart, items: newItems }), stockWarning };
+  }
 
   // Check if same item already in cart
   const existing = cart.items.find(i =>
     i.product_id === product.id && i.variant_id === (variantId ?? null)
   );
 
-  let newItems: OfflineCartItem[];
   if (existing) {
     const newQty = existing.quantity + 1;
     if (product.tracks_stock && !product.allow_negative_stock && newQty > stock) {
@@ -144,6 +180,8 @@ export function addItemToCart(
       tracks_stock:         product.tracks_stock,
       allow_negative_stock: product.allow_negative_stock,
       cached_stock:         stock,
+      is_weightable:        false,
+      weight_unit:          null,
     });
     newItems = [...cart.items, newItem];
   }
@@ -163,6 +201,24 @@ export function updateItemQty(
       return recalcItem({ ...item, quantity: qty });
     })
     .filter(item => item.quantity > 0);
+  return recalcCart({ ...cart, items: newItems });
+}
+
+/**
+ * Sets the absolute weight (quantity) of an existing weightable line — used
+ * to correct a misweigh via the weight-entry modal. Unlike updateItemQty
+ * (which nudges quantity by a delta, meant for whole-unit +/- steppers),
+ * this replaces the value outright and enforces weight > 0.
+ */
+export function setItemWeight(
+  cart:    OfflineCart,
+  localId: string,
+  weight:  number,
+): OfflineCart {
+  const qty = Math.max(0.001, weight);
+  const newItems = cart.items.map(item =>
+    item.local_id === localId ? recalcItem({ ...item, quantity: qty }) : item
+  );
   return recalcCart({ ...cart, items: newItems });
 }
 

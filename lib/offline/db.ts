@@ -17,6 +17,8 @@ export interface CachedProduct {
   unit_id: number | null;
   tracks_stock: boolean;
   allow_negative_stock: boolean;
+  is_weightable: boolean;
+  weight_unit: 'g' | 'kg' | null; // meaningful only when is_weightable=true
   current_stock: number;
   image_url: string | null;
   variants: CachedVariant[];

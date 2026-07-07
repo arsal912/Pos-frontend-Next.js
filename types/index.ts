@@ -250,6 +250,7 @@ export interface Product {
   low_stock_threshold: number | null;
   is_active: boolean;
   is_weightable: boolean;
+  weight_unit: 'g' | 'kg' | null;
   created_by: number | null;
   total_stock?: number;
   variants_count?: number;

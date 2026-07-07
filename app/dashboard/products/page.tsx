@@ -176,7 +176,9 @@ export default function ProductsPage() {
                             <div className="flex items-center gap-1.5">
                               <p className="font-medium">{p.name}</p>
                               {p.is_weightable && (
-                                <Badge variant="outline" className="text-[10px] flex-shrink-0">Weightable</Badge>
+                                <Badge variant="outline" className="text-[10px] flex-shrink-0">
+                                  Weightable{p.weight_unit ? ` (${p.weight_unit})` : ''}
+                                </Badge>
                               )}
                             </div>
                             {p.type === 'variable' && (

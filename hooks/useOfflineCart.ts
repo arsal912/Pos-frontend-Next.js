@@ -9,6 +9,7 @@ import {
   newOfflineCart,
   addItemToCart,
   updateItemQty,
+  setItemWeight,
   removeItem,
   setCartCustomer,
   setCartDiscount,
@@ -30,8 +31,9 @@ export type { OfflineCart, OfflineCartItem, OfflineCompletionResult, OfflineVali
 export interface UseOfflineCartReturn {
   cart:          OfflineCart | null;
   isReady:       boolean;
-  addProduct:    (product: CachedProduct, variantId?: number | null) => { stockWarning: string | null };
+  addProduct:    (product: CachedProduct, variantId?: number | null, initialQuantity?: number) => { stockWarning: string | null };
   updateQty:     (localId: string, delta: number) => void;
+  setWeight:     (localId: string, weight: number) => void;
   removeItem:    (localId: string) => void;
   setCustomer:   (customer: CachedCustomer | null) => void;
   setDiscount:   (type: 'fixed' | 'percent' | null, value: number, reason: string) => void;
@@ -82,9 +84,9 @@ export function useOfflineCart(): UseOfflineCartReturn {
     return fresh;
   }, [cart, storeId, mutate]);
 
-  const addProduct = useCallback((product: CachedProduct, variantId?: number | null) => {
+  const addProduct = useCallback((product: CachedProduct, variantId?: number | null, initialQuantity?: number) => {
     if (!cart || !storeId) return { stockWarning: null };
-    const { cart: updated, stockWarning } = addItemToCart(cart, product, variantId);
+    const { cart: updated, stockWarning } = addItemToCart(cart, product, variantId, initialQuantity);
     mutate(updated);
     return { stockWarning };
   }, [cart, storeId, mutate]);
@@ -92,6 +94,11 @@ export function useOfflineCart(): UseOfflineCartReturn {
   const updateQtyFn = useCallback((localId: string, delta: number) => {
     if (!cart) return;
     mutate(updateItemQty(cart, localId, delta));
+  }, [cart, mutate]);
+
+  const setWeightFn = useCallback((localId: string, weight: number) => {
+    if (!cart) return;
+    mutate(setItemWeight(cart, localId, weight));
   }, [cart, mutate]);
 
   const removeItemFn = useCallback((localId: string) => {
@@ -131,6 +138,7 @@ export function useOfflineCart(): UseOfflineCartReturn {
     isReady,
     addProduct,
     updateQty:    updateQtyFn,
+    setWeight:    setWeightFn,
     removeItem:   removeItemFn,
     setCustomer:  setCustomerFn,
     setDiscount:  setDiscountFn,

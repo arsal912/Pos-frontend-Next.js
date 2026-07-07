@@ -57,6 +57,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
     cost_price: '', selling_price: '', msrp: '',
     track_stock: true, allow_negative_stock: false,
     low_stock_threshold: '', is_active: true, is_weightable: false,
+    weight_unit: 'kg' as 'g' | 'kg',
     initial_stock: '', branch_id: '',
   });
 
@@ -98,6 +99,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
             allow_negative_stock: p.allow_negative_stock,
             low_stock_threshold: String(p.low_stock_threshold ?? ''),
             is_active: p.is_active, is_weightable: p.is_weightable ?? false,
+            weight_unit: (p.weight_unit ?? 'kg') as 'g' | 'kg',
             initial_stock: '', branch_id: '',
           });
           setVariants(p.variants ?? []);
@@ -107,6 +109,20 @@ export default function ProductForm({ productId }: ProductFormProps) {
         .finally(() => setLoading(false));
     }
   }, [isEdit, productId, loadRefData]);
+
+  // Pre-fill the weight unit for brand-new products from the store's
+  // Weighing Scale settings default (falls back to 'kg' if unset/unreachable).
+  useEffect(() => {
+    if (isEdit) return;
+    apiClient.get('/store/settings/weighing-scale')
+      .then(res => {
+        const defaultUnit = (res.data as any)?.setting?.default_weight_unit;
+        if (defaultUnit === 'g' || defaultUnit === 'kg') {
+          setForm(f => ({ ...f, weight_unit: defaultUnit }));
+        }
+      })
+      .catch(() => {});
+  }, [isEdit]);
 
   // -------------------------------------------------------------------------
   // Save
@@ -142,6 +158,7 @@ export default function ProductForm({ productId }: ProductFormProps) {
         low_stock_threshold: form.low_stock_threshold ? parseInt(form.low_stock_threshold) : undefined,
         is_active: form.is_active,
         is_weightable: form.is_weightable,
+        weight_unit: form.is_weightable ? form.weight_unit : null,
         initial_stock: form.initial_stock ? parseFloat(form.initial_stock) : undefined,
         branch_id: form.branch_id ? parseInt(form.branch_id) : undefined,
       };
@@ -400,6 +417,20 @@ export default function ProductForm({ productId }: ProductFormProps) {
               </div>
               <Switch checked={form.is_weightable} onCheckedChange={v => upd('is_weightable', v)} />
             </div>
+
+            {form.is_weightable && (
+              <div className="space-y-1.5">
+                <Label>Weight Unit</Label>
+                <select value={form.weight_unit} onChange={e => upd('weight_unit', e.target.value)}
+                  className="w-full h-10 rounded-md border bg-background px-3 text-sm">
+                  <option value="kg">Kilogram (kg)</option>
+                  <option value="g">Gram (g)</option>
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Selling price is treated as price per {form.weight_unit}. Cashiers will type the weighed amount at checkout.
+                </p>
+              </div>
+            )}
           </div>
         )}
 

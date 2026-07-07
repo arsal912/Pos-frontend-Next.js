@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import {
   Printer, Settings2, Tag, Ruler,
   ChevronRight, MessageSquare, Monitor, MessageCircle,
-  Save, Loader2, ShieldCheck, Palette, Globe, Keyboard,
+  Save, Loader2, ShieldCheck, Palette, Globe, Keyboard, Scale,
 } from 'lucide-react';
 import { ThemeSelector } from '@/components/ui/ThemeSelector';
 import { Card } from '@/components/ui/card';
@@ -63,6 +63,7 @@ const SETTING_LINKS = [
   { href: '/dashboard/settings/receipt',        icon: Printer,      label: 'Receipt Templates',  desc: 'Customize thermal and A4 receipt layouts' },
   { href: '/dashboard/settings/tax-rates',      icon: Tag,          label: 'Tax Rates',          desc: 'GST, VAT and other tax rates' },
   { href: '/dashboard/settings/units',          icon: Ruler,        label: 'Units of Measure',   desc: 'Piece, Kg, Litre, etc.' },
+  { href: '/dashboard/settings/scale',          icon: Scale,        label: 'Weighing Scale',     desc: 'Default unit and connection mode for weighted items' },
   { href: '/dashboard/settings/communications', icon: MessageSquare,label: 'Communications',     desc: 'Sender identity, quotas, opt-outs' },
   { href: '/dashboard/settings/devices',        icon: Monitor,      label: 'POS Devices',        desc: 'Offline terminals, device registry' },
   { href: '/dashboard/settings/roles',          icon: ShieldCheck,  label: 'Roles & Permissions', desc: 'Create roles and control what each can access' },
